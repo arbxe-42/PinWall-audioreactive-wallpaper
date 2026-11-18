@@ -3,9 +3,9 @@
 // always on the beat; when the clock isn't locked, no hits fire at all.
 // Fire visuals this many ms early: the screen shows a frame ~1-2 frames after it is drawn.
 export const LEAD = 45;
-// Hit feel: 0 = the 30 s contrast curve always (current choice, 04:15), 1 = the "settled" feel always (40-hit, peak),
+// Hit feel: 1 = the "settled" feel always (40-hit, peak; current choice, 04:25), 0 = the 30 s contrast curve always,
 // null = crossfade (start-of-drop curve for the first 10 s of a section, then the settled feel). See _hit.
-const PIN_SETTLE = 0;
+const PIN_SETTLE = 1;
 // The settled feel scales the 20 ms peak confidence (true, since 2026-11-18 03:40) or the trigger confidence
 // (false: the version the user picked at 03:25, fun but too close between real kicks and extras).
 const SETTLED_USES_PEAK = true;
