@@ -26,8 +26,8 @@ sys.path.append(os.path.join(ROOT, "listener"))   # after ROOT: listener/kicknet
 W, H_WALL, H_STRIP, FPS = 1920, 1044, 120, 30
 CROP = (0, 112, 2560, 1280)          # the collage only (below the icon shelf, above the taskbar): used for sync
 # what the clip shows: everything but the taskbar. The icon shelf stays because its Reactive/Ambient toggle
-# (top right) shows the mode switching (the user: "the top is important"); the desktop icons inside the
-# shelf's plates are blurred (shelf.json plate boxes), the toggle stays sharp. --icons shows them as they are.
+# (top right) shows the mode switching (the user: "the top is important"). The desktop icons are shown as
+# they are (the user's choice); --blur-icons blurs the inside of the shelf's plates, the toggle stays sharp.
 SHOW = (0, 0, 2560, 1392)
 
 
@@ -162,7 +162,7 @@ def main():
     ap.add_argument("--out", default=os.path.join(ROOT, "demo", "pinwall-demo.mp4"))
     ap.add_argument("--skip", type=float, default=0.6, help="seconds trimmed off the start")
     ap.add_argument("--gif", "--loop", dest="gif", action="store_true", help="also write a 6 s animated WebP loop")
-    ap.add_argument("--icons", action="store_true", help="show the desktop icons in the shelf (blurred by default)")
+    ap.add_argument("--blur-icons", action="store_true", help="blur the desktop icons inside the shelf plates (shown by default)")
     a = ap.parse_args()
     import soundfile as sf
     audio, sr = sf.read(os.path.join(a.raw, "audio.wav"), dtype="float32", always_2d=True)
@@ -188,7 +188,7 @@ def main():
     a_in = ["-i", aligned]
     cmd = (["ffmpeg", "-v", "error", "-y", "-ss", f"{a.skip:.3f}", "-i", video,
             "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H_STRIP}", "-r", str(FPS), "-i", "-"] + a_in +
-           ["-filter_complex", f"[0:v]{icon_blur(a.icons)}[cl];[cl]crop={SHOW[2]}:{SHOW[3]}:{SHOW[0]}:{SHOW[1]},"
+           ["-filter_complex", f"[0:v]{icon_blur(not a.blur_icons)}[cl];[cl]crop={SHOW[2]}:{SHOW[3]}:{SHOW[0]}:{SHOW[1]},"
             f"scale={W}:{H_WALL}:flags=lanczos,fps={FPS}[wall];[wall][1:v]vstack[v];"
             "[2:a]anull[a]",
             "-map", "[v]", "-map", "[a]", "-t", f"{dur:.3f}", "-c:v", "libx264", "-preset", "slow", "-crf", "18",

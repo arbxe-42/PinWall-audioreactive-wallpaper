@@ -135,7 +135,8 @@ Lively. Then delete the folder.
 ## How it works (short version)
 
 `listener\server.py` captures what Windows plays (WASAPI loopback). `listener\detect.py` finds the
-tempo and beat phase, and detects kicks in real time from sudden low-end jumps. Each kick is sent to
+tempo and beat phase, and `listener\kicknet.py` (KickNet, a tiny neural net) detects kicks in real time,
+about 30 ms after each one. Each kick is sent to
 the wallpaper over `ws://127.0.0.1:4360`, stamped with the moment you'll hear it. The wallpaper
 (`wallpaper\`, WebGL2 in Lively's browser) draws the collage, the clock and the effects. Everything
 stays on your machine.

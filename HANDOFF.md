@@ -1,7 +1,8 @@
 # Pin Wall: handoff for the next agent
 
-Written 2026-11-17, end of the build session; updated 2026-11-18 (KickNet, stem labels, shatter perf, vivid colours). Read this first, then `README.md` (user-facing guide
-for this install) and `share/README.md` (guide for other people). The root `CLAUDE.md` describes the
+Written 2026-11-17, end of the build session; updated 2026-11-18 (KickNet, stem labels, shatter perf, vivid colours). Read this first, then `docs/THIS_INSTALL.md` (the
+guide for this install; it was README.md until the repo went public), `README.md` (the public overview)
+and `share/README.md` (the user guide that ships in PinWall.zip). The root `CLAUDE.md` describes the
 user and their taste.
 
 ## What it is
@@ -255,8 +256,8 @@ sketch/, test/, MORNING.html   original look sketch, stills and captures (contai
   ddagrab GPU capture of monitor 0 + soundcard loopback, restores everything) and `tools/make_demo.py`
   (KickNet + old trigger on the sound, sync by matching frame-to-frame motion to kicks, strip, libx264).
   NVENC fails on this NVIDIA driver (needs 610+), so both encode with libx264. The clip keeps the icon
-  shelf (its Reactive/Ambient toggle shows the mode; the user wants it) with the desktop icons inside the
-  plates blurred, and cuts only the taskbar: 1920 x 1044 wall + 120 px strip = 1920 x 1164. README "Demo video" has the
+  shelf (its Reactive/Ambient toggle shows the mode; the user wants it), desktop icons shown as they are
+  (the user's choice; `--blur-icons` exists), and cuts only the taskbar: 1920 x 1044 wall + 120 px strip = 1920 x 1164. README "Demo video" has the
   commands.
 - The published demo: the user's own recordings (INZO - Overthinker first, "looks cooler with purple",
   then JPEGMAFIA - 1539 N. Calvert), measured sound offsets 385 / 340 ms. Full clip (88 MB) and web clip
