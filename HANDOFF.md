@@ -232,8 +232,11 @@ sketch/, test/, MORNING.html   original look sketch, stills and captures (contai
    automatic), an ensemble of the 5 fold models (+5x 0.15 ms), a small GRU instead of the MLP.
    The packaged build (`dist/`, `tools/package.py`) must ship `kicknet.py` + `kicknet.npz`
    (weights are learned from the user's music: harmless numbers, but check before publishing).
-1. **Publishing:** GitHub repo vs zip. It needs the user's explicit OK; a README screenshot must not
-   show their pins.
+1. **Publishing:** a **private** GitHub repo exists since 2026-11-18 (the user asked, pins included):
+   https://github.com/andres-r-blanco/pin-wall (`git push` from `live-wallpaper/`, HTTPS via `gh`;
+   SSH has no key here). `.gitignore` keeps out the venv, caches, `test/` desktop captures, `dist/` and
+   all audio. Making anything PUBLIC still needs the user's explicit yes, and a public copy must not
+   contain their pins (`dist/PinWall.zip` is the code-only package).
 2. **Laptop-speaker lag**: now ~30 ms with KickNet (was 50-60 ms). Probably fine; not asked again.
 3. **Laptop-alone icon shelf** is unmeasured (`shelf.json` has no `1536x960` entry). Ask for a
    screenshot.
