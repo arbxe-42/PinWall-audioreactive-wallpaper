@@ -1,0 +1,175 @@
+// Music input: the Pin Wall listener (beat clock over WebSocket) with Lively's coarse audio feed as
+// a fallback for smooth levels only. Beats fire from the listener's predicted clock, so a hit is
+// always on the beat; when the clock isn't locked, no hits fire at all.
+// Fire visuals this many ms early: the screen shows a frame ~1-2 frames after it is drawn.
+export const LEAD = 45;
+
+export class Music {
+  constructor() {
+    this.ws = null; this.connected = false;
+    this.mode = 'reactive';
+    this.clock = null;           // {next, period, locked, pos, accent, down}
+    this.lastFired = 0;
+    this.levels = { b: 0, m: 0, h: 0 };
+    this.target = { b: 0, m: 0, h: 0 };
+    this.lastLevelAt = 0;
+    this.lastBeatAt = 0;
+    this.handlers = { beat: [], hit: [], drop: [], mode: [], device: [] };
+    this.zs = [];
+    this.liveMax = [1e-3, 1e-3, 1e-3];
+    this.device = '';
+    this._connect();
+  }
+
+  on(ev, fn) { this.handlers[ev].push(fn); }
+  emit(ev, x) { for (const f of this.handlers[ev]) f(x); }
+
+  _connect() {
+    let ws;
+    try { ws = new WebSocket('ws://127.0.0.1:' + (new URLSearchParams(location.search).get('ws') || 4360)); } catch (e) { setTimeout(() => this._connect(), 3000); return; }
+    this.ws = ws;
+    ws.onopen = () => { this.connected = true; };
+    ws.onclose = () => { this.connected = false; this.clock = null; setTimeout(() => this._connect(), 3000); };
+    ws.onerror = () => {};
+    ws.onmessage = ev => {
+      let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (m.type === 'clock') this._clock(m);
+      else if (m.type === 'levels') { this.target = { b: m.b, m: m.m, h: m.h }; this.lastLevelAt = Date.now(); }
+      else if (m.type === 'drop') this._drop(m);
+      else if (m.type === 'hit') this._hit(m);
+      else if (m.type === 'reload') setTimeout(() => location.reload(), 300);   // new images were imported
+      else if (m.type === 'mode') { this.mode = m.mode; this.emit('mode', m.mode); }
+      else if (m.type === 'hello') { this.mode = m.mode; this.device = m.device; this.emit('mode', m.mode); this.emit('device', m); }
+      else if (m.type === 'silence') { this.clock = null; }
+    };
+  }
+
+  setMode(mode) {
+    this.mode = mode;
+    if (this.connected) this.ws.send(JSON.stringify({ type: 'mode', mode }));
+    this.emit('mode', mode);
+  }
+
+  _clock(m) {
+    // The listener announces a predicted beat. With speaker delay (Bluetooth: ~250 ms) the beat it
+    // calls "next" can be one AFTER a beat that hasn't been heard yet, and a fresh message arrives
+    // every beat, so the wallpaper must step back to the earliest beat still to come, or it would
+    // keep chasing a target that moves away and never fire at all.
+    const now = Date.now(), P = m.period;
+    let next = m.next, shift = 0;
+    while (next - P > now && next - P - this.lastFired > P * 0.5) { next -= P; shift--; }
+    while (next - this.lastFired < P * 0.5) { next += P; shift++; }
+    this.clock = { next, period: P, locked: m.locked, pos: (((m.pos + shift) % 4) + 4) % 4, accent: m.accent, down: m.down, bpm: m.bpm,
+                   active: m.active !== false, pk: m.pk || null, half: this.clock && this.clock.half };
+  }
+
+  _drop(m) {
+    const wait = Math.max(0, m.at - Date.now());
+    setTimeout(() => this.emit('drop', m), wait);
+  }
+
+  // Lively's audio feed (128 bands, ~16 per second): smooth levels only.
+  livelyAudio(arr) {
+    if (this.connected && Date.now() - this.lastLevelAt < 1000) return;
+    const avg = (a, b) => { let s = 0; for (let i = a; i < b; i++) s += arr[i]; return s / (b - a); };
+    const v = [avg(0, 8), avg(8, 48), avg(48, 128)];
+    for (let i = 0; i < 3; i++) this.liveMax[i] = Math.max(this.liveMax[i] * 0.999, v[i]);
+    this.target = { b: v[0] / this.liveMax[0], m: v[1] / this.liveMax[1], h: v[2] / this.liveMax[2] };
+    this.lastLevelAt = Date.now();
+  }
+
+  // call every frame
+  update(dt) {
+    const k = 1 - Math.exp(-dt * 14);
+    for (const c of ['b', 'm', 'h']) this.levels[c] += (this.target[c] - this.levels[c]) * k;
+    if (Date.now() - this.lastLevelAt > 1500) for (const c of ['b', 'm', 'h']) this.target[c] *= 0.9;
+    const c = this.clock;
+    if (!c) return;
+    const now = Date.now() + LEAD;
+    if (now - c.next > 2 * c.period) { c.next = now + c.period; c.half = null; return; }   // stale: resync quietly
+    while (now >= c.next) {
+      const pos = c.pos;
+      this.lastFired = c.next;
+      if (c.locked) {
+        this.lastBeatAt = Date.now();
+        this.emit('beat', { pos, accent: c.accent ? c.accent[pos] : 0.5, down: pos === c.down, bpm: c.bpm, period: c.period });
+      }
+      c.next += c.period;
+      c.pos = (pos + 1) % 4;
+    }
+  }
+
+  // A hit = a kick the listener actually heard (snares too: they carry a kick underneath in this music).
+  // It is scheduled for the moment you hear it; on laptop speakers that moment has usually just passed,
+  // so it fires at once (~40 ms late); on Bluetooth speakers there is time to land it exactly.
+  _hit(m) {
+    this.zs.push(m.z); if (this.zs.length > 200) this.zs.shift();
+    const sorted = [...this.zs].sort((a, b) => a - b);
+    const p80 = sorted[Math.floor(sorted.length * 0.8)] || m.z || 1;
+    let strength, soft = false;
+    if (m.z <= 1) {
+      // KickNet confidence (0.5 = just over the trigger, 1 = certain), relative to this song's recent hits:
+      // sure kicks hit full, borderline ones (arp notes, stray melody) only nudge (the user's idea, 2026-11-18)
+      const rel = Math.max(0, Math.min(1, (m.z - 0.5) / Math.max(0.05, p80 - 0.5)));
+      strength = 0.12 + 0.88 * Math.pow(rel, 1.5);
+      soft = true;
+    } else strength = Math.min(1, m.z / p80);
+    const c = this.clock;
+    let beat = false, down = false;
+    if (c && c.locked) {
+      const d = ((m.at - c.next) % c.period + c.period) % c.period;
+      beat = Math.min(d, c.period - d) < 70;
+      if (beat) {
+        const k = Math.round((m.at - c.next) / c.period);
+        down = ((c.pos + k) % 4 + 4) % 4 === c.down;
+      }
+    }
+    const fire = () => { this.lastHitAt = Date.now(); this.emit('hit', { strength, soft, beat, down, period: c ? c.period : 500 }); };
+    const wait = m.at - LEAD - Date.now();
+    wait > 0 ? setTimeout(fire, wait) : fire();
+  }
+
+  // seconds since the last locked beat (for "no beat for a while" -> ambient feel)
+  sinceBeat() { return (Date.now() - this.lastBeatAt) / 1000; }
+  sinceHit() { return (Date.now() - (this.lastHitAt || 0)) / 1000; }
+}
+
+// Dominant colours of an album cover (base64 PNG from Lively's now-playing data).
+export function coverPalette(b64) {
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = c.height = 40;
+      const g = c.getContext('2d');
+      g.drawImage(img, 0, 0, 40, 40);
+      const d = g.getImageData(0, 0, 40, 40).data;
+      const px = [];
+      for (let i = 0; i < d.length; i += 4) px.push([d[i], d[i + 1], d[i + 2]]);
+      res(kmeans(px, 5));
+    };
+    img.onerror = () => res(null);
+    img.src = b64.startsWith('data:') ? b64 : 'data:image/png;base64,' + b64;
+  });
+}
+
+function kmeans(px, k) {
+  const w = px.map(([r, g, b]) => { const mx = Math.max(r, g, b), mn = Math.min(r, g, b); return 0.3 + (mx - mn) / (mx + 1) * 1.6 + mx / 400; });
+  let c = [];
+  for (let i = 0; i < k; i++) c.push(px[Math.floor((i + 0.5) / k * px.length)].slice());
+  let lab = new Array(px.length).fill(0);
+  for (let it = 0; it < 10; it++) {
+    for (let i = 0; i < px.length; i++) {
+      let best = 0, bd = 1e9;
+      for (let j = 0; j < k; j++) { const d = (px[i][0] - c[j][0]) ** 2 + (px[i][1] - c[j][1]) ** 2 + (px[i][2] - c[j][2]) ** 2; if (d < bd) { bd = d; best = j; } }
+      lab[i] = best;
+    }
+    for (let j = 0; j < k; j++) {
+      let s = [0, 0, 0], ws = 0;
+      for (let i = 0; i < px.length; i++) if (lab[i] === j) { s[0] += px[i][0] * w[i]; s[1] += px[i][1] * w[i]; s[2] += px[i][2] * w[i]; ws += w[i]; }
+      if (ws) c[j] = [s[0] / ws, s[1] / ws, s[2] / ws];
+    }
+  }
+  const share = c.map((_, j) => lab.reduce((a, l, i) => a + (l === j ? w[i] : 0), 0));
+  return c.map((col, j) => ({ col, share: share[j] })).sort((a, b) => b.share - a.share).map(x => x.col);
+}

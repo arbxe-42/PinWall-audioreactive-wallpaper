@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kick Check</title>
+<style>
+:root {
+  --bg: #0d0b12; --panel: #16131d; --line: #2a2533; --ink: #ece8f2; --dim: #8d869a;
+  --kick: #ff8a3d; --snare: #36d6ff; --hat: #8bdc6a; --live: #ffffff; --nn: #ff3fb8; --mine: #ffe14a; --bad: #ff3b3b;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, "Segoe UI", sans-serif; }
+header { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 2; }
+h1 { font-size: 15px; margin: 0 6px 0 0; letter-spacing: .04em; }
+select, button, input { font: inherit; color: var(--ink); background: #221e2b; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
+button { cursor: pointer; }
+button.on { background: #3a2f4a; border-color: #6b5a86; }
+button.play { min-width: 84px; font-weight: 600; }
+.seg { display: inline-flex; }
+.seg button { border-radius: 0; }
+.seg button:first-child { border-radius: 6px 0 0 6px; }
+.seg button:last-child { border-radius: 0 6px 6px 0; }
+.time { font-variant-numeric: tabular-nums; color: var(--dim); min-width: 120px; }
+main { padding: 14px 16px 40px; max-width: 1500px; margin: 0 auto; }
+canvas { display: block; width: 100%; border-radius: 8px; background: var(--panel); }
+#overview { height: 56px; cursor: pointer; margin-bottom: 10px; }
+#zoom { height: 330px; cursor: crosshair; }
+.row { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin: 12px 0; }
+.chip { display: inline-flex; align-items: center; gap: 6px; color: var(--dim); }
+.chip i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+label { color: var(--dim); display: inline-flex; gap: 6px; align-items: center; }
+input[type=number] { width: 72px; }
+.help { color: var(--dim); font-size: 13px; columns: 2 320px; margin-top: 14px; }
+.help b { color: var(--ink); font-weight: 600; }
+kbd { background: #221e2b; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font: 12px ui-monospace, monospace; color: var(--ink); }
+#status { color: var(--dim); margin-left: auto; }
+#stats { color: var(--dim); font-variant-numeric: tabular-nums; }
+textarea { width: 100%; min-height: 54px; font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.loading { opacity: .5; pointer-events: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>KICK CHECK</h1>
+  <select id="track"></select>
+  <button id="play" class="play">▶ Play</button>
+  <span class="seg"><button id="srcMix" class="on">Mix</button><button id="srcDrums">Drum stem</button></span>
+  <label>speed <select id="rate"><option value="1">1×</option><option value="0.75">0.75×</option><option value="0.5">0.5×</option></select></label>
+  <span class="time" id="time">0:00.0 / 0:00</span>
+  <span id="status">loading…</span>
+</header>
+<main>
+  <canvas id="overview"></canvas>
+  <canvas id="zoom"></canvas>
+  <div class="row">
+    <span class="chip"><i style="background:var(--kick)"></i>stem kick label</span>
+    <span class="chip"><i style="background:var(--snare)"></i>stem snare label</span>
+    <span class="chip"><i style="background:var(--hat)"></i>stem hat / other</span>
+    <span class="chip"><i style="background:var(--live)"></i>old trigger hit</span>
+    <span class="chip"><i style="background:var(--nn)"></i>KickNet hit (live now)</span>
+    <span class="chip"><i style="background:var(--mine)"></i>your marks</span>
+    <span class="chip"><i style="background:var(--bad)"></i>marked wrong / misfire</span>
+  </div>
+  <div class="row">
+    <span style="color:var(--dim)">ticks:</span>
+    <button class="tick on" data-k="kicks">stem kicks</button>
+    <button class="tick" data-k="snares">stem snares</button>
+    <button class="tick" data-k="hats">stem hats</button>
+    <button class="tick" data-k="live">old trigger</button>
+    <button class="tick" data-k="kicknet">KickNet hits</button>
+    <button class="tick on" data-k="mine">your marks</button>
+    <label>tick volume <input id="tickVol" type="range" min="0" max="1" step="0.05" value="0.5"></label>
+    <label>window <select id="win"><option>3</option><option selected>6</option><option>12</option><option>24</option></select> s</label>
+  </div>
+  <div class="row">
+    <label>tap delay <input id="offset" type="number" step="5" value="0"> ms</label>
+    <label><input id="auto" type="checkbox" checked> learn it from my taps</label>
+    <span id="offsetInfo" style="color:var(--dim)"></span>
+    <label><input id="snap" type="checkbox" checked> snap taps to the nearest stem onset (±80 ms)</label>
+    <span id="stats"></span>
+    <button id="clearTaps" title="removes your yellow kick / snare taps on this track (keeps 'wrong' and 'misfire' marks and notes)">Clear my taps</button>
+  </div>
+  <textarea id="notes" placeholder="Notes on this track (e.g. 'vocal chops at 1:20 fire hits', 'stem misses the soft kick in the intro')"></textarea>
+  <div class="help">
+    <p><kbd>Space</kbd> play / pause · <kbd>←</kbd><kbd>→</kbd> 2 s back / forward · <kbd>D</kbd> mix ↔ drum stem · click the top strip to jump</p>
+    <p><b>While playing:</b> <kbd>K</kbd> tap a kick, <kbd>S</kbd> tap a snare (yellow). <kbd>X</kbd> marks the detector hit nearest the playhead as a misfire. <kbd>Z</kbd> undo.</p>
+    <p><b>With the mouse</b> (in the big view): click an orange / cyan label to mark it <b>wrong</b> (click again to undo). Click a white (old) / pink (KickNet, live now) hit to mark it a <b>misfire</b>. Click an empty spot in the yellow lane to add a kick there (shift-click: snare); click a yellow mark to delete it.</p>
+    <p><b>Tap delay:</b> taps land late: Bluetooth speakers (the K3s) add ~250 ms and reacting to a sound adds up to ~300 ms more. The page starts from the speaker delay the listener uses and, with "learn it from my taps" on, measures your real delay from your first taps (the median gap to the drum hit just before each tap). Tap a few clear kicks first. Everything saves on its own to <code>bench/annotations/&lt;track&gt;.json</code>.</p>
+  </div>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const ctx = new (window.AudioContext || window.webkitAudioContext)();
+const gainMain = ctx.createGain(); gainMain.connect(ctx.destination);
+const gainTick = ctx.createGain(); gainTick.gain.value = 0.5; gainTick.connect(ctx.destination);
+let D = null, buf = { mix: null, drums: null }, src = 'mix', node = null, playing = false, t0 = 0, pos = 0, rate = 1;
+let ann = null, undo = [], saveTimer = null, tickTimer = null, scheduledUpTo = 0;
+const ticksOn = { kicks: true, snares: false, hats: false, live: false, kicknet: false, mine: true };
+const LANES = ['wave', 'kicks', 'snares', 'hats', 'live', 'kicknet', 'mine'];
+const LANE_NAME = { wave: '', kicks: 'stem kicks', snares: 'stem snares', hats: 'stem hats', live: 'old trigger', kicknet: 'KickNet (live)', mine: 'your marks' };
+const COL = { kicks: '--kick', snares: '--snare', hats: '--hat', live: '--live', kicknet: '--nn', mine: '--mine' };
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+function fmt(t) { t = Math.max(0, t); const m = Math.floor(t / 60), s = t - m * 60; return `${m}:${s.toFixed(1).padStart(4, '0')}`; }
+function now() { return playing ? pos + (ctx.currentTime - t0) * rate : pos; }
+// Taps arrive late: the speakers play late (Bluetooth K3 ~250 ms) and fingers add their own delay. The tap
+// delay starts at the listener's speaker delay and is then learned from the taps themselves: the median gap
+// between each tap and the stem onset just before it.
+let tapDiffs = [], devDelay = 0, tapLog = [];
+// once the delay is learned (or changes), move this session's earlier taps to where they really belong
+function retime() {
+  const off = (+$('#offset').value || 0) / 1000;
+  for (const tp of tapLog) {
+    const i = ann[tp.key].findIndex(x => Math.abs(x - tp.v) < 0.002);
+    if (i < 0) continue;
+    tp.v = +snapTime(tp.raw - off).toFixed(3);
+    ann[tp.key][i] = tp.v;
+  }
+  changed();
+}
+function learnDelay() {
+  // every tap could belong to several nearby drum hits; the true delay is the one value most taps agree on
+  // search from the speaker delay to +350 ms (reacting to what you hear adds up to ~300 ms; the user's own
+  // taps on track 01 were ~260 ms late on non-Bluetooth output). In steady music other delays fit too, so ties
+  // go to the smallest delay.
+  let best = null, bestN = -1;
+  const lo = Math.max(0, devDelay / 1000 - 0.04), hi = devDelay / 1000 + 0.35;
+  for (let d = lo; d <= hi; d += 0.005) {
+    let n = 0;
+    for (const c of tapDiffs) if (c.some(x => Math.abs(x - d) <= 0.025)) n++;
+    if (n > bestN) { bestN = n; best = d; }
+  }
+  // refine: mean of the matching gaps
+  const m = []; for (const c of tapDiffs) { const x = c.find(x => Math.abs(x - best) <= 0.025); if (x != null) m.push(x); }
+  return { d: m.length ? m.reduce((a, b) => a + b, 0) / m.length : best, n: bestN };
+}
+function tapTime(kind = 'kick') {
+  const raw = now();
+  if ($('#auto').checked && D) {
+    const src = kind === 'snare' ? D.snares : D.kicks;
+    tapDiffs.push(src.filter(o => o <= raw && o >= raw - 0.6).map(o => raw - o));
+    if (tapDiffs.length > 24) tapDiffs.shift();
+    if (tapDiffs.length >= 4) {
+      const L = learnDelay();
+      if (L.n >= Math.max(3, 0.6 * tapDiffs.length)) {
+        const was = +$('#offset').value;
+        $('#offset').value = Math.round(L.d * 1000);
+        if (Math.abs(was - L.d * 1000) > 8) retime();
+        $('#offsetInfo').textContent = `(learned: ${L.n} of ${tapDiffs.length} taps agree)`;
+      }
+    }
+  }
+  return raw - (+$('#offset').value || 0) / 1000;
+}
+function heardNow() { return now() - (+$('#offset').value || 0) / 1000; }
+
+// ---------------------------------------------------------------- loading
+async function loadTracks() {
+  try { const dv = await (await fetch('/device')).json(); devDelay = dv.delay_ms || 0; } catch (_) {}
+  const list = await (await fetch('/tracks')).json();
+  $('#track').innerHTML = list.map(t => `<option value="${t.num}">${t.num} · ${t.name}${t.annotated ? '  ✓' : ''}</option>`).join('');
+  const last = localStorage.getItem('kc_track');
+  if (last && list.some(t => t.num === last)) $('#track').value = last;
+  await loadTrack($('#track').value);
+}
+async function decode(url) { const r = await fetch(url); return ctx.decodeAudioData(await r.arrayBuffer()); }
+async function loadTrack(num) {
+  stop(); pos = 0;
+  document.body.classList.add('loading');
+  status('loading track…');
+  try { localStorage.setItem('kc_track', num); } catch (_) {}
+  D = await (await fetch('/data/' + num)).json();
+  ann = D.ann || { kick_add: [], snare_add: [], wrong: [], misfire: [], notes: '' };
+  for (const k of ['kick_add', 'snare_add', 'wrong', 'misfire']) ann[k] = ann[k] || [];
+  tapDiffs = []; tapLog = []; $('#offsetInfo').textContent = '(from the speaker delay)';
+  $('#offset').value = devDelay;   // always start from the speaker delay; taps then refine it
+  $('#notes').value = ann.notes || '';
+  undo = [];
+  status('decoding audio…');
+  [buf.mix, buf.drums] = await Promise.all([decode('/audio/mix/' + num), decode('/audio/drums/' + num)]);
+  document.body.classList.remove('loading');
+  status(D.ann ? `loaded · saved ${D.ann.updated || ''}` : 'loaded · no annotations yet');
+  updateStats(); draw();
+}
+function status(s) { $('#status').textContent = s; }
+
+// ---------------------------------------------------------------- transport
+function start() {
+  if (!buf[src]) return;
+  if (ctx.state === 'suspended') ctx.resume();
+  node = ctx.createBufferSource(); node.buffer = buf[src]; node.playbackRate.value = rate; node.connect(gainMain);
+  t0 = ctx.currentTime + 0.03;
+  node.start(t0, Math.max(0, pos));
+  node.onended = () => { if (playing && now() >= buf[src].duration - 0.05) { stop(); pos = 0; } };
+  playing = true; scheduledUpTo = pos;
+  $('#play').textContent = '❚❚ Pause';
+  clearInterval(tickTimer); tickTimer = setInterval(scheduleTicks, 50); scheduleTicks();
+}
+function stop() {
+  if (playing) { pos = now(); try { node.stop(); } catch (_) {} }
+  playing = false; node = null; clearInterval(tickTimer);
+  for (const n of liveTicks) try { n.stop(); } catch (_) {}
+  liveTicks = [];
+  $('#play').textContent = '▶ Play';
+}
+function seek(t) { const p = playing; stop(); pos = Math.max(0, Math.min(t, D ? D.dur : 0)); if (p) start(); draw(); }
+function setSrc(s) { const p = playing; const t = now(); stop(); src = s; pos = t; $('#srcMix').classList.toggle('on', s === 'mix'); $('#srcDrums').classList.toggle('on', s === 'drums'); if (p) start(); }
+
+// ticks: short clicks scheduled on the audio clock, so they line up exactly with the music
+let liveTicks = [];
+const TICK_F = { kicks: 2600, snares: 1400, hats: 6000, live: 4200, kicknet: 3400, mine: 900 };
+function laneTimes(k) {
+  if (!D) return [];
+  if (k === 'kicks') return D.kicks; if (k === 'snares') return D.snares; if (k === 'hats') return D.hats || [];
+  if (k === 'live') return (D.hits && D.hits.live) || []; if (k === 'kicknet') return (D.hits && D.hits.kicknet) || [];
+  if (k === 'mine') return [...ann.kick_add, ...ann.snare_add].sort((a, b) => a - b);
+  return [];
+}
+function scheduleTicks() {
+  if (!playing) return;
+  const horizon = now() + 0.25 * rate;
+  for (const k of Object.keys(ticksOn)) {
+    if (!ticksOn[k]) continue;
+    for (const t of laneTimes(k)) {
+      if (t < scheduledUpTo || t >= horizon) continue;
+      const when = t0 + (t - pos) / rate;
+      if (when < ctx.currentTime) continue;
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = TICK_F[k]; o.type = 'sine';
+      g.gain.setValueAtTime(0.0001, when); g.gain.exponentialRampToValueAtTime(0.9, when + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, when + 0.035);
+      o.connect(g); g.connect(gainTick); o.start(when); o.stop(when + 0.05);
+      liveTicks.push(o); if (liveTicks.length > 200) liveTicks.shift();
+    }
+  }
+  scheduledUpTo = horizon;
+}
+
+// ---------------------------------------------------------------- annotation
+const near = (arr, t, tol) => { let best = -1, bd = tol; arr.forEach((x, i) => { const d = Math.abs(x - t); if (d <= bd) { bd = d; best = i; } }); return best; };
+function snapTime(t) {
+  if (!$('#snap').checked) return t;
+  const i = near(D.onsets, t, 0.08);
+  return i >= 0 ? D.onsets[i] : t;
+}
+function push(op) { undo.push(op); changed(); }
+function addMark(kind, t, raw) {
+  const key = kind === 'snare' ? 'snare_add' : 'kick_add'; const v = +snapTime(t).toFixed(3);
+  ann[key].push(v);
+  if (raw != null) { tapLog.push({ key, raw, v }); if (tapLog.length > 40) tapLog.shift(); }
+  push({ key, v, add: true });
+}
+function toggle(key, v) {
+  const i = ann[key].findIndex(x => Math.abs(x - v) < 0.002);
+  if (i >= 0) { ann[key].splice(i, 1); push({ key, v, add: false }); } else { ann[key].push(v); push({ key, v, add: true }); }
+}
+function doUndo() {
+  const op = undo.pop(); if (!op) return;
+  if (op.add) { const i = ann[op.key].findIndex(x => Math.abs(x - op.v) < 0.002); if (i >= 0) ann[op.key].splice(i, 1); }
+  else ann[op.key].push(op.v);
+  changed();
+}
+function markMisfireNear(t) {
+  const hits = [...laneTimes('live'), ...laneTimes('kicknet')];
+  const i = near(hits, t, 0.25);
+  if (i >= 0) toggle('misfire', hits[i]);
+}
+function changed() {
+  updateStats(); draw();
+  clearTimeout(saveTimer); status('saving…');
+  saveTimer = setTimeout(save, 700);
+}
+async function save() {
+  if (!D) return;
+  ann.offset_ms = +$('#offset').value || 0; ann.notes = $('#notes').value; ann.lv = D.lv;
+  const r = await fetch('/save/' + D.num, { method: 'POST', body: JSON.stringify(ann) });
+  const j = await r.json();
+  if (!j.ok) { status('⚠ ' + j.error); $('#status').style.color = 'var(--bad)'; return; }
+  status('saved ' + j.updated);
+  const opt = $('#track').selectedOptions[0]; if (opt && !opt.textContent.endsWith('✓')) opt.textContent += '  ✓';
+}
+function updateStats() {
+  if (!D) return;
+  $('#stats').textContent = `labels: ${D.kicks.length} kicks · ${D.snares.length} snares   |   you: +${ann.kick_add.length} kicks · +${ann.snare_add.length} snares · ${ann.wrong.length} wrong · ${ann.misfire.length} misfires`;
+}
+
+// ---------------------------------------------------------------- drawing
+const ov = $('#overview'), zc = $('#zoom');
+function fit(c) { const r = c.getBoundingClientRect(), d = devicePixelRatio || 1; if (c.width !== Math.round(r.width * d)) { c.width = Math.round(r.width * d); c.height = Math.round(r.height * d); } return d; }
+function win() { return +$('#win').value; }
+function zoomRange() { const w = win(), t = now(); const a = Math.max(0, Math.min(t - w * 0.3, (D ? D.dur : 0) - w)); return [a, a + w]; }
+function laneY(i, H) { const top = 0, hw = H * 0.34; if (i === 0) return [top, hw]; const h = (H - hw) / (LANES.length - 1); return [hw + (i - 1) * h, h]; }
+function isWrong(t) { return ann.wrong.some(x => Math.abs(x - t) < 0.002); }
+function isMis(t) { return ann.misfire.some(x => Math.abs(x - t) < 0.002); }
+
+function draw() {
+  if (!D) return;
+  // overview
+  let d = fit(ov); let g = ov.getContext('2d'); const W = ov.width, H = ov.height;
+  g.clearRect(0, 0, W, H);
+  const e = src === 'mix' ? D.env_mix : D.env_drums;
+  g.fillStyle = '#3b3448';
+  const step = e.length / W;
+  for (let x = 0; x < W; x++) { let m = 0; for (let j = Math.floor(x * step); j < Math.floor((x + 1) * step); j++) m = Math.max(m, e[j] || 0); const h = m / 100 * H * 0.9; g.fillRect(x, (H - h) / 2, 1, h); }
+  g.fillStyle = css('--kick'); for (const t of D.kicks) g.fillRect(t / D.dur * W, H - 4 * d, 1, 4 * d);
+  g.fillStyle = css('--mine'); for (const t of [...ann.kick_add, ...ann.snare_add]) g.fillRect(t / D.dur * W - d, 0, 2 * d, 6 * d);
+  g.fillStyle = css('--bad'); for (const t of [...ann.wrong, ...ann.misfire]) g.fillRect(t / D.dur * W - d, 0, 2 * d, 6 * d);
+  const [a, b] = zoomRange();
+  g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(a / D.dur * W, 0, (b - a) / D.dur * W, H);
+  g.fillStyle = '#fff'; g.fillRect(now() / D.dur * W, 0, 1.5 * d, H);
+
+  // zoom
+  d = fit(zc); g = zc.getContext('2d'); const ZW = zc.width, ZH = zc.height;
+  g.clearRect(0, 0, ZW, ZH);
+  const X = t => (t - a) / (b - a) * ZW;
+  // beat-ish grid: one line per second
+  g.strokeStyle = '#221e2b'; g.lineWidth = 1;
+  for (let s = Math.ceil(a); s < b; s++) { g.beginPath(); g.moveTo(X(s), 0); g.lineTo(X(s), ZH); g.stroke(); g.fillStyle = '#5c5568'; g.font = `${11 * d}px system-ui`; g.fillText(fmt(s).replace('.0', ''), X(s) + 3 * d, 12 * d); }
+  // waveform lane
+  const [wy, wh] = laneY(0, ZH);
+  const rateE = D.env_rate, i0 = Math.floor(a * rateE), i1 = Math.ceil(b * rateE);
+  g.fillStyle = src === 'mix' ? '#5b4f73' : '#7a5134';
+  for (let i = i0; i < i1; i++) { const v = (e[i] || 0) / 100 * wh * 0.92; g.fillRect(X(i / rateE), wy + (wh - v) / 2, Math.max(1, ZW / (i1 - i0)), v); }
+  // marker lanes
+  LANES.forEach((k, li) => {
+    if (!li) return;
+    const [y, h] = laneY(li, ZH);
+    g.fillStyle = li % 2 ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0)'; g.fillRect(0, y, ZW, h);
+    g.fillStyle = '#6f6880'; g.font = `${11 * d}px system-ui`; g.fillText(LANE_NAME[k], 6 * d, y + 13 * d);
+    const col = css(COL[k]);
+    const times = k === 'mine' ? null : laneTimes(k);
+    const drawM = (t, c, bad) => {
+      if (t < a - 0.1 || t > b + 0.1) return;
+      const x = X(t);
+      g.fillStyle = c; g.fillRect(x - 1.5 * d, y + h * 0.22, 3 * d, h * 0.6);
+      if (bad) { g.strokeStyle = css('--bad'); g.lineWidth = 2.5 * d; g.beginPath(); g.moveTo(x - 6 * d, y + h * 0.3); g.lineTo(x + 6 * d, y + h * 0.74); g.moveTo(x + 6 * d, y + h * 0.3); g.lineTo(x - 6 * d, y + h * 0.74); g.stroke(); }
+    };
+    if (k === 'mine') {
+      for (const t of ann.kick_add) drawM(t, css('--mine'), false);
+      for (const t of ann.snare_add) { drawM(t, css('--mine'), false); if (t >= a && t <= b) { g.fillStyle = css('--snare'); g.fillRect(X(t) - 1.5 * d, y + h * 0.22, 3 * d, h * 0.15); } }
+    } else {
+      const badFn = (k === 'kicks' || k === 'snares' || k === 'hats') ? isWrong : isMis;
+      for (const t of times) drawM(t, col, badFn(t));
+      if (!times.length && (k === 'live' || k === 'kicknet')) { g.fillStyle = '#4a4456'; g.fillText('(no hits computed for this track yet)', 90 * d, y + 13 * d); }
+    }
+  });
+  // playhead
+  g.fillStyle = '#fff'; g.fillRect(X(now()) - d, 0, 2 * d, ZH);
+  $('#time').textContent = `${fmt(now())} / ${fmt(D.dur)}`;
+}
+function loop() { if (playing) draw(); requestAnimationFrame(loop); }
+
+// ---------------------------------------------------------------- input
+ov.addEventListener('click', ev => { if (!D) return; const r = ov.getBoundingClientRect(); seek((ev.clientX - r.left) / r.width * D.dur); });
+zc.addEventListener('click', ev => {
+  if (!D) return;
+  const r = zc.getBoundingClientRect(), d = devicePixelRatio || 1;
+  const [a, b] = zoomRange(); const t = a + (ev.clientX - r.left) / r.width * (b - a);
+  const y = (ev.clientY - r.top) * d; let li = 0;
+  LANES.forEach((k, i) => { const [ly, lh] = laneY(i, zc.height); if (y >= ly && y < ly + lh) li = i; });
+  const k = LANES[li]; const tol = (b - a) * 0.012;
+  if (k === 'wave') return seek(t);
+  if (k === 'kicks' || k === 'snares' || k === 'hats') { const arr = laneTimes(k); const i = near(arr, t, tol); if (i >= 0) toggle('wrong', arr[i]); return; }
+  if (k === 'live' || k === 'kicknet') { const arr = laneTimes(k); const i = near(arr, t, tol); if (i >= 0) toggle('misfire', arr[i]); return; }
+  if (k === 'mine') {
+    for (const key of ['kick_add', 'snare_add']) { const i = near(ann[key], t, tol); if (i >= 0) { const v = ann[key][i]; ann[key].splice(i, 1); push({ key, v, add: false }); return; } }
+    addMark(ev.shiftKey ? 'snare' : 'kick', t);
+  }
+});
+document.addEventListener('keydown', ev => {
+  if (ev.target.tagName === 'TEXTAREA' || ev.target.tagName === 'INPUT' && ev.target.type === 'number') return;
+  const k = ev.key.toLowerCase();
+  if (k === ' ') { ev.preventDefault(); playing ? stop() : start(); draw(); }
+  else if (k === 'arrowleft') seek(now() - 2);
+  else if (k === 'arrowright') seek(now() + 2);
+  else if (k === 'd') setSrc(src === 'mix' ? 'drums' : 'mix');
+  else if (k === 'k') { const raw = now(); addMark('kick', tapTime(), raw); }
+  else if (k === 's') { const raw = now(); addMark('snare', tapTime('snare'), raw); }
+  else if (k === 'x') markMisfireNear(heardNow());
+  else if (k === 'z') doUndo();
+});
+$('#clearTaps').onclick = () => {
+  if (!D || !(ann.kick_add.length + ann.snare_add.length)) return;
+  if (!confirm(`Remove your ${ann.kick_add.length} kick and ${ann.snare_add.length} snare taps on this track? Wrong-marks, misfires and notes stay.`)) return;
+  ann.kick_add = []; ann.snare_add = []; tapLog = []; undo = []; changed();
+};
+$('#play').onclick = () => { playing ? stop() : start(); draw(); };
+$('#srcMix').onclick = () => setSrc('mix');
+$('#srcDrums').onclick = () => setSrc('drums');
+$('#track').onchange = e => loadTrack(e.target.value);
+$('#rate').onchange = e => { const p = playing; const t = now(); stop(); rate = +e.target.value; pos = t; if (p) start(); };
+$('#tickVol').oninput = e => gainTick.gain.value = +e.target.value;
+$('#win').onchange = draw;
+$('#offset').onchange = () => changed();
+$('#notes').oninput = () => { clearTimeout(saveTimer); status('saving…'); saveTimer = setTimeout(save, 900); };
+document.querySelectorAll('.tick').forEach(b => b.onclick = () => { ticksOn[b.dataset.k] = !ticksOn[b.dataset.k]; b.classList.toggle('on', ticksOn[b.dataset.k]); scheduledUpTo = now(); });
+addEventListener('resize', draw);
+loadTracks().catch(e => status('error: ' + e.message));
+loop();
+</script>
+</body>
+</html>

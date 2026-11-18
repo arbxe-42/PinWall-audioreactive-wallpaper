@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+listener/.venv/
+
+# runtime state and logs
+listener/listener.log
+listener/replay_test.log
+listener/state.json
+*.log
+
+# build output (rebuild: listener/.venv/Scripts/python.exe tools/package.py)
+dist/
+
+# bench: rebuildable caches and experiment outputs (only the live model's scores are kept)
+bench/kn_cache/
+bench/kn_acts_*.npz
+!bench/kn_acts_full_lag3_v7k.npz
+bench/kn_hits_*.npz
+bench/kn_*_log.txt
+bench/kn_results_*.json
+bench/scratch/
+tools/annotate/cache/
+*.tmp.npz
+
+# desktop screenshots and test captures (they show the desktop and its icons)
+test/
+
+# never commit audio (stems and mixes live outside this folder; keep it that way)
+*.wav
+*.flac
+*.mp3
+*.ogg
+*.m4a
+*.aac

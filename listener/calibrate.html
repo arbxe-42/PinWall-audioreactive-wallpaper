@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pin Wall · speaker delay</title>
+<style>
+  body { background: #07040b; color: #ddd; font: 17px/1.5 system-ui, sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; }
+  .box { max-width: 640px; padding: 32px; }
+  h1 { color: #b6ff2e; font-weight: 600; }
+  button { background: #b6ff2e; color: #000; border: 0; padding: 14px 26px; font-size: 18px; border-radius: 8px; cursor: pointer; }
+  #pad { margin-top: 24px; height: 160px; border: 2px dashed #444; border-radius: 12px; display: grid; place-items: center; color: #888; user-select: none; }
+  #pad.hit { background: #ff2bd6; color: #000; }
+  #out { margin-top: 18px; color: #22e6ff; white-space: pre-line; }
+  small { color: #888; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Speaker delay</h1>
+  <p>Measures how late you hear sound on the speakers you're using right now (Bluetooth speakers or headphones, the
+  laptop speakers, headphones), so the wallpaper's hits land exactly when you hear the beat.</p>
+  <p>1. Make sure the speakers you want to measure are the Windows output and the Pin Wall listener is running.<br>
+  2. Press start. You'll hear 4 count-in clicks, then 24 clicks.<br>
+  3. Tap the space bar (or click the box) exactly on every click you hear, from the fifth click on.</p>
+  <button id="go">Start (plays clicks)</button>
+  <div id="pad">tap here or press space</div>
+  <div id="out"></div>
+  <p><small>The result is saved to <code>listener/devices.json</code> for the current output device.</small></p>
+</div>
+<script>
+const out = document.getElementById('out'), pad = document.getElementById('pad');
+let clicks = [], taps = [], running = false, device = '?';
+let ws = null;
+try {
+  ws = new WebSocket('ws://127.0.0.1:4360');
+  ws.onmessage = e => { const m = JSON.parse(e.data); if (m.type === 'hello') { device = m.device; out.textContent = `Output: ${device} (currently +${Math.round(m.delay * 1000)} ms)`; } };
+  ws.onerror = () => { out.textContent = 'The Pin Wall listener is not running: start it first (see README).'; };
+} catch (e) {}
+
+function tap() {
+  if (!running) return;
+  taps.push(performance.now());
+  pad.classList.add('hit'); setTimeout(() => pad.classList.remove('hit'), 80);
+}
+pad.onpointerdown = tap;
+addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); tap(); } });
+
+document.getElementById('go').onclick = async () => {
+  const ctx = new AudioContext();
+  await ctx.resume();
+  clicks = []; taps = []; running = true;
+  const period = 0.5, start = ctx.currentTime + 0.6;
+  const perf0 = performance.now(), ctx0 = ctx.currentTime;
+  for (let i = 0; i < 28; i++) {
+    const t = start + i * period;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = i < 4 ? 1500 : 1000;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.6, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    o.connect(g).connect(ctx.destination);
+    o.start(t); o.stop(t + 0.06);
+    // when the click leaves the browser into Windows' mixer (what the listener hears)
+    if (i >= 4) clicks.push(perf0 + (t - ctx0) * 1000);
+  }
+  out.textContent = 'Listening… tap on each click.';
+  setTimeout(() => {
+    running = false;
+    const d = [];
+    for (const c of clicks) {
+      let best = null;
+      for (const t of taps) if (Math.abs(t - c - 150) < 400 && (best === null || Math.abs(t - c - 150) < Math.abs(best - c - 150))) best = t;
+      if (best !== null) d.push(best - c);
+    }
+    if (d.length < 12) { out.textContent = `Only ${d.length} taps matched. Try again and tap on every click.`; return; }
+    d.sort((a, b) => a - b);
+    const med = d[d.length >> 1];
+    const spread = d[Math.floor(d.length * 0.75)] - d[Math.floor(d.length * 0.25)];
+    // people tap ~30 ms early on a steady click; the listener already allows ~15 ms of normal output buffering
+    const delay = Math.max(0, (med + 30 - 15) / 1000);
+    out.textContent = `Matched ${d.length} taps · median ${Math.round(med)} ms (spread ${Math.round(spread)} ms)\nSpeaker delay for "${device}": ${Math.round(delay * 1000)} ms`;
+    if (ws && ws.readyState === 1) { ws.send(JSON.stringify({ type: 'calib', delay })); out.textContent += '\nSaved.'; }
+  }, (0.6 + 28 * period) * 1000 + 800);
+};
+</script>
+</body>
+</html>

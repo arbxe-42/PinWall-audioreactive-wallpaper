@@ -1,0 +1,117 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Pin Wall probe</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #07040b; color: #b6ff2e; font: 22px/1.4 Consolas, monospace; overflow: hidden; }
+  #out { position: absolute; left: 40px; top: 160px; white-space: pre; }
+  #bars { position: absolute; left: 40px; bottom: 40px; right: 40px; height: 200px; }
+  #dot { position: absolute; width: 24px; height: 24px; margin: -12px; border-radius: 50%; background: #ff2bd6; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="out">probe starting…</div>
+<canvas id="bars"></canvas>
+<div id="dot"></div>
+<script>
+// Diagnostic wallpaper: reports what Lively gives a web wallpaper to the local log server.
+const LOG = 'http://127.0.0.1:4361/log';
+const S = {
+  started: Date.now(),
+  screen: { w: screen.width, h: screen.height, iw: innerWidth, ih: innerHeight, dpr: devicePixelRatio },
+  ua: navigator.userAgent,
+  audio: { calls: 0, len: null, min: 1e9, max: -1e9, nonzero: 0, sumAbsDiff: 0, intervals: [] , last: null},
+  track: [],
+  playback: [],
+  props: [],
+  mouse: { move: 0, down: 0, up: 0, click: 0, dbl: 0, wheel: 0, lastX: null, lastY: null, buttons: [] },
+  frames: 0, fps: 0, gl: null, errors: [],
+  env: { href: location.href, origin: location.origin }
+};
+fetch('test.json').then(r => r.json()).then(j => S.env.fetch = j.ok).catch(e => S.env.fetch = 'ERR ' + e);
+import('./test_mod.js').then(() => S.env.module = !!window.MODULE_OK).catch(e => S.env.module = 'ERR ' + e);
+(function () {
+  const img = new Image();
+  img.onload = () => {
+    try {
+      const c = document.createElement('canvas'), g = c.getContext('webgl2');
+      const t = g.createTexture(); g.bindTexture(g.TEXTURE_2D, t);
+      g.texImage2D(g.TEXTURE_2D, 0, g.RGBA, g.RGBA, g.UNSIGNED_BYTE, img);
+      S.env.texImage = g.getError() === 0 ? 'ok' : 'glerror';
+    } catch (e) { S.env.texImage = 'ERR ' + e; }
+  };
+  img.onerror = () => S.env.texImage = 'img load failed';
+  img.src = 'test.webp';
+  try { new WebSocket('ws://127.0.0.1:4360').onopen = () => S.env.ws = 'open'; } catch (e) { S.env.ws = 'ERR ' + e; }
+  S.env.imageDecoder = typeof ImageDecoder;
+})();
+let lastAudioT = 0, prevArr = null;
+
+function livelyAudioListener(a) {
+  const t = performance.now();
+  if (lastAudioT) { S.audio.intervals.push(+(t - lastAudioT).toFixed(1)); if (S.audio.intervals.length > 400) S.audio.intervals.shift(); }
+  lastAudioT = t;
+  S.audio.calls++; S.audio.len = a.length;
+  let nz = 0;
+  for (let i = 0; i < a.length; i++) { const v = a[i]; if (v < S.audio.min) S.audio.min = v; if (v > S.audio.max) S.audio.max = v; if (v !== 0) nz++; }
+  if (nz) S.audio.nonzero++;
+  if (prevArr) { let d = 0; for (let i = 0; i < a.length; i++) d += Math.abs(a[i] - prevArr[i]); S.audio.sumAbsDiff += d; }
+  prevArr = Array.from(a); S.audio.last = prevArr.map(v => +(+v).toFixed(4));
+  drawBars(a);
+}
+function livelyCurrentTrack(data) {
+  let o = null; try { o = JSON.parse(data); } catch (e) {}
+  const keys = o ? Object.keys(o) : null;
+  const summary = o ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, typeof v === 'string' && v.length > 120 ? `<${v.length} chars, starts ${v.slice(0, 30)}>` : v])) : null;
+  S.track.push({ t: Date.now(), keys, summary });
+  send();
+}
+function livelyWallpaperPlaybackChanged(data) { S.playback.push({ t: Date.now(), data }); send(); }
+function livelyPropertyListener(name, val) { S.props.push({ name, val }); }
+
+const dot = document.getElementById('dot');
+addEventListener('pointermove', e => { S.mouse.move++; S.mouse.lastX = e.clientX; S.mouse.lastY = e.clientY; dot.style.left = e.clientX + 'px'; dot.style.top = e.clientY + 'px'; });
+addEventListener('mousemove', e => { S.mouse.lastX = e.clientX; S.mouse.lastY = e.clientY; });
+addEventListener('pointerdown', e => { S.mouse.down++; S.mouse.buttons.push(e.button); });
+addEventListener('pointerup', () => S.mouse.up++);
+addEventListener('click', () => S.mouse.click++);
+addEventListener('dblclick', () => S.mouse.dbl++);
+addEventListener('wheel', () => S.mouse.wheel++);
+addEventListener('error', e => S.errors.push(String(e.message)));
+
+try {
+  const c = document.createElement('canvas'), gl = c.getContext('webgl2');
+  if (gl) { const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    S.gl = { ok: true, renderer: ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER), maxTex: gl.getParameter(gl.MAX_TEXTURE_SIZE), floatRT: !!gl.getExtension('EXT_color_buffer_float') }; }
+  else S.gl = { ok: false };
+} catch (e) { S.gl = { ok: false, err: String(e) }; }
+
+const cv = document.getElementById('bars'), cx = cv.getContext('2d');
+function drawBars(a) {
+  cv.width = cv.clientWidth; cv.height = cv.clientHeight;
+  cx.clearRect(0, 0, cv.width, cv.height); cx.fillStyle = '#22e6ff';
+  const w = cv.width / a.length;
+  for (let i = 0; i < a.length; i++) { const h = Math.min(1, a[i]) * cv.height; cx.fillRect(i * w, cv.height - h, w - 1, h); }
+}
+let fT = performance.now(), fN = 0;
+(function loop() { S.frames++; fN++; const t = performance.now(); if (t - fT > 1000) { S.fps = Math.round(fN * 1000 / (t - fT)); fN = 0; fT = t; } requestAnimationFrame(loop); })();
+
+function send() {
+  const body = JSON.stringify(S);
+  fetch(LOG, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body }).catch(() => {});
+}
+setInterval(() => {
+  const iv = S.audio.intervals, med = iv.length ? [...iv].sort((a, b) => a - b)[iv.length >> 1] : null;
+  document.getElementById('out').textContent =
+`PIN WALL PROBE  ${new Date().toLocaleTimeString()}
+screen ${S.screen.w}x${S.screen.h}  inner ${innerWidth}x${innerHeight}  dpr ${devicePixelRatio}
+audio calls ${S.audio.calls}  len ${S.audio.len}  median interval ${med} ms  range ${S.audio.min.toFixed?.(3)}..${S.audio.max.toFixed?.(3)}  nonzero frames ${S.audio.nonzero}
+track events ${S.track.length}  playback events ${S.playback.length}
+mouse move ${S.mouse.move} down ${S.mouse.down} click ${S.mouse.click} dbl ${S.mouse.dbl} at ${S.mouse.lastX},${S.mouse.lastY}
+fps ${S.fps}  webgl2 ${S.gl && S.gl.ok}  ${S.gl && S.gl.renderer}`;
+  send();
+}, 1000);
+</script>
+</body>
+</html>

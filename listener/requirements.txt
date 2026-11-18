@@ -1,0 +1,6 @@
+numpy>=1.26
+scipy>=1.11
+soundcard>=0.4.3
+websockets>=12
+pystray>=0.19
+pillow>=10

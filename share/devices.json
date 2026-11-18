@@ -1,0 +1,8 @@
+{
+  "_about": "Extra delay (seconds) between Windows sending audio and you hearing it, per output device. Matched by part of the device name, first match wins. Measure yours with listener/calibrate.html (tray icon > Calibrate speaker delay).",
+  "devices": [
+    {"match": "Bluetooth", "delay": 0.2},
+    {"match": "Headphones", "delay": 0.0},
+    {"match": "", "delay": 0.0}
+  ]
+}

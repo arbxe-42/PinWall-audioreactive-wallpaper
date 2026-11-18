@@ -1,0 +1,39 @@
+{
+ "mode": {
+  "type": "dropdown",
+  "value": 0,
+  "text": "Mode (also Ctrl+Alt+W)",
+  "items": [
+   "Reactive",
+   "Ambient"
+  ]
+ },
+ "intensity": {
+  "type": "slider",
+  "value": 100,
+  "min": 20,
+  "max": 150,
+  "tick": 13,
+  "text": "Reaction intensity"
+ },
+ "clock": {
+  "type": "checkbox",
+  "value": true,
+  "text": "Show clock"
+ },
+ "battery": {
+  "type": "checkbox",
+  "value": false,
+  "text": "Battery mode (30 fps, lower resolution)"
+ },
+ "calibrate": {
+  "type": "checkbox",
+  "value": false,
+  "text": "Show icon shelf outlines (calibration)"
+ },
+ "vivid": {
+  "type": "checkbox",
+  "value": true,
+  "text": "Vivid colours (wide-gamut screens like the laptop's)"
+ }
+}

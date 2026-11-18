@@ -1,0 +1,4 @@
+{
+  "_about": "Optional calm strip behind a row of desktop icons, per screen size in scaled pixels (see README: Icon shelf). band = strip height (0 = none), plates = [left, right] of each icon group, plateY = [top, bottom], bottom = room for the taskbar.",
+  "default": { "band": 0, "plates": [], "bottom": 48 }
+}

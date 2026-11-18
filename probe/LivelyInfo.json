@@ -1,0 +1,11 @@
+{
+  "AppVersion": "1.0.0.0",
+  "Title": "Pin Wall probe",
+  "Desc": "Diagnostic wallpaper: reports Lively's audio, now-playing, mouse and screen data to a local log.",
+  "Author": "Pin Wall",
+  "License": "",
+  "Contact": "",
+  "Type": 1,
+  "FileName": "index.html",
+  "Arguments": "--audio --system-nowplaying --pause-event true"
+}

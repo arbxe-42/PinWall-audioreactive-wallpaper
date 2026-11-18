@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pin Wall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Noto+Sans+JP:wght@900&family=Space+Mono:wght@700&display=block" rel="stylesheet">
+<style>
+  html, body { margin: 0; height: 100%; background: #07040b; overflow: hidden; cursor: default; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #icons { position: fixed; left: 0; top: 0; pointer-events: none; display: none; }
+  /* warm the fonts so the 2D overlay can use them */
+  .fw { position: absolute; left: -9999px; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<img id="icons" alt="">
+<span class="fw" style="font-family: Anton">0</span>
+<span class="fw" style="font: 700 10px 'Space Mono'">0</span>
+<span class="fw" style="font: 900 10px 'Noto Sans JP'">ド</span>
+<div id="err" style="position:fixed;left:10px;bottom:10px;color:#f33;font:16px monospace;white-space:pre;z-index:9;display:none"></div>
+<script>
+  addEventListener('error', e => { const d = document.getElementById('err'); d.style.display = 'block'; d.textContent += (e.message || e) + String.fromCharCode(10); });
+  addEventListener('unhandledrejection', e => { const d = document.getElementById('err'); d.style.display = 'block'; d.textContent += 'promise: ' + (e.reason && (e.reason.stack || e.reason.message) || e.reason) + String.fromCharCode(10); });
+  // test only: paste the real desktop icon row over the shelf to judge the composition
+  const q = new URLSearchParams(location.search);
+  if (q.has('icons')) { const i = document.getElementById('icons'); i.src = q.get('icons'); i.style.display = 'block'; }
+</script>
+<script>
+  // always load the current code: Lively's browser would otherwise keep old copies of the modules
+  (function () {
+    const v = Date.now(), files = ['gl', 'shaders', 'layout', 'textures', 'overlay', 'audio', 'main'];
+    const imports = {};
+    for (const f of files) imports[new URL('src/' + f + '.js', location.href).href] = new URL('src/' + f + '.js?v=' + v, location.href).href;
+    const im = document.createElement('script'); im.type = 'importmap'; im.textContent = JSON.stringify({ imports });
+    document.currentScript.after(im);
+    const m = document.createElement('script'); m.type = 'module'; m.src = 'src/main.js?v=' + v;
+    im.after(m);
+  })();
+</script>
+</body>
+</html>

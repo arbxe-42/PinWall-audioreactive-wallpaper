@@ -1,0 +1,9 @@
+{
+  "_about": "Extra delay (seconds) between Windows sending audio and you hearing it, per output device. Matched by substring of the device name, first match wins. Measured: K3 over Bluetooth from your hand-fixed Adrenaline kicks (+242 ms vs the low-end onset, ~250-265 ms vs the attack). Refine with listener/calibrate.html.",
+  "devices": [
+    {"match": "K3", "delay": 0.25},
+    {"match": "Bluetooth", "delay": 0.2},
+    {"match": "Headphones", "delay": 0.0},
+    {"match": "", "delay": 0.0}
+  ]
+}

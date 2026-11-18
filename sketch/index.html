@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pin Wall sketch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Noto+Sans+JP:wght@900&family=VT323&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+  :root { --a: #ff2bd6; --b: #b6ff2e; --c: #22e6ff; --d: #7b2cff; --y: #ffe14a; --bg: #07040b; }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #view { position: absolute; inset: 0; }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); left: 50%; top: 50%; transform-origin: center; }
+  .comp { position: absolute; inset: 0; }
+
+  .rays { position: absolute; left: -500px; top: -900px; width: 3000px; height: 3000px;
+    background: repeating-conic-gradient(from 0deg at 1500px 1450px, color-mix(in srgb, var(--a) 16%, transparent) 0 4deg, transparent 4deg 12deg); }
+  .dots { position: absolute; inset: 0;
+    background-image: radial-gradient(circle, color-mix(in srgb, var(--c) 55%, transparent) 1.6px, transparent 2.2px);
+    background-size: 14px 14px;
+    -webkit-mask-image: radial-gradient(ellipse 55% 60% at 22% 70%, #000 0%, transparent 70%);
+            mask-image: radial-gradient(ellipse 55% 60% at 22% 70%, #000 0%, transparent 70%); opacity: .7; }
+  .bigtype { position: absolute; left: -40px; top: 360px; font: 340px/0.8 Anton, sans-serif; letter-spacing: -6px;
+    color: transparent; -webkit-text-stroke: 3px color-mix(in srgb, var(--b) 45%, transparent); white-space: nowrap; }
+
+  .pin { position: absolute; }
+  .pin img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .pin.shadow { filter: drop-shadow(0 18px 30px rgba(0,0,0,.7)); }
+  .plates { filter: drop-shadow(7px 0 0 color-mix(in srgb, var(--a) 85%, transparent)) drop-shadow(-7px 0 0 color-mix(in srgb, var(--c) 85%, transparent)) drop-shadow(0 22px 40px rgba(0,0,0,.8)); }
+  .tape::before, .tape::after { content: ""; position: absolute; width: 130px; height: 34px; background: color-mix(in srgb, var(--y) 70%, transparent); z-index: 2; mix-blend-mode: normal; }
+  .tape::before { top: -16px; left: 18%; transform: rotate(-6deg); }
+  .tape::after { bottom: -14px; right: 14%; transform: rotate(4deg); }
+  .sticker { border: 10px solid #fff; border-radius: 28px; overflow: hidden; }
+  .circle img { border-radius: 50%; }
+  .circle { border-radius: 50%; outline: 6px solid var(--b); outline-offset: 8px; }
+  .duo { position: relative; }
+  .duo img { filter: grayscale(1) contrast(1.6) brightness(1.05); }
+  .duo::after { content: ""; position: absolute; inset: 0; background: var(--d); mix-blend-mode: screen; }
+  .duo::before { content: ""; position: absolute; inset: 0; z-index: 1; mix-blend-mode: multiply;
+    background-image: radial-gradient(circle, var(--a) 2.4px, transparent 3px); background-size: 9px 9px; }
+
+  .win { background: #c0c0c0; padding: 4px; box-shadow: inset -2px -2px #404040, inset 2px 2px #fff, 0 20px 40px rgba(0,0,0,.7); }
+  .win .bar { height: 30px; background: linear-gradient(90deg, #0a1a8a, #1084d0); color: #fff; font: 24px/30px VT323, monospace; padding: 0 8px; display: flex; justify-content: space-between; }
+  .win .bar b { font-weight: 400; letter-spacing: 1px; }
+  .win .btns span { display: inline-block; width: 22px; height: 20px; margin: 5px 0 0 3px; background: #c0c0c0; color: #000; font: 18px/20px VT323; text-align: center; box-shadow: inset -1px -1px #404040, inset 1px 1px #fff; }
+  .win .body { position: absolute; left: 4px; right: 4px; top: 38px; bottom: 4px; }
+
+  .mast { position: absolute; left: 56px; top: 30px; z-index: 30; }
+  .mast .time { font: 250px/0.86 Anton, sans-serif; color: var(--b); letter-spacing: -4px;
+    text-shadow: 6px 0 var(--a), -6px 0 var(--c); }
+  .mast .line { font: 700 26px/1 "Space Mono", monospace; color: #fff; background: #000; display: inline-block; padding: 8px 12px; margin-top: 10px; letter-spacing: 2px; }
+  .mast .line i { color: var(--a); font-style: normal; }
+  .kanji { position: absolute; left: 600px; top: 40px; z-index: 30; writing-mode: vertical-rl; font: 900 74px/1 "Noto Sans JP", sans-serif; color: #fff; background: var(--a); padding: 10px 6px; }
+  .barcode { position: absolute; left: 700px; top: 50px; z-index: 30; width: 46px; height: 150px; background: repeating-linear-gradient(0deg, #fff 0 3px, transparent 3px 5px, #fff 5px 6px, transparent 6px 10px, #fff 10px 14px, transparent 14px 16px); }
+
+  .np { position: absolute; right: 50px; bottom: 44px; z-index: 30; text-align: right; }
+  .np .tag { font: 700 22px/1 "Space Mono", monospace; color: #000; background: var(--b); display: inline-block; padding: 6px 10px; letter-spacing: 3px; }
+  .np .title { font: 92px/0.9 Anton, sans-serif; color: #fff; text-transform: uppercase; margin-top: 8px; text-shadow: 5px 5px 0 var(--d); }
+  .np .chips { display: flex; justify-content: flex-end; gap: 6px; margin-top: 12px; }
+  .np .chips span { width: 46px; height: 22px; }
+
+  .holo { transform: rotate(3deg) scale(1.1) translateY(-26px) !important; z-index: 25 !important;
+    filter: drop-shadow(0 50px 50px rgba(0,0,0,.9)); }
+  .holo::after { content: ""; position: absolute; inset: 0; width: auto; height: auto; transform: none; background-color: transparent; z-index: 3; mix-blend-mode: overlay; opacity: .8;
+    background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,.7) 32%, transparent 40%),
+      conic-gradient(from 200deg at 70% 30%, #ff2bd6, #ffe14a, #b6ff2e, #22e6ff, #7b2cff, #ff2bd6); }
+  .cursor { position: absolute; z-index: 60; width: 0; height: 0; border-left: 18px solid #fff; border-bottom: 26px solid transparent; transform: rotate(-20deg); filter: drop-shadow(2px 2px 0 #000); }
+
+  .slam { position: absolute; z-index: 55; width: 380px; height: 380px; transform: translate(-50%, -50%) rotate(-8deg); }
+  .slam .star { position: absolute; inset: 0; background: var(--y);
+    clip-path: polygon(50% 0%, 58% 30%, 85% 8%, 70% 38%, 100% 35%, 74% 54%, 98% 78%, 66% 68%, 62% 100%, 48% 72%, 26% 96%, 32% 64%, 0% 70%, 24% 50%, 2% 24%, 34% 34%, 22% 4%, 44% 28%); }
+  .slam .star.back { background: #000; transform: translate(12px, 12px); }
+  .slam b { position: absolute; inset: 0; display: grid; place-items: center; font: 900 120px/1 "Noto Sans JP"; color: #000; -webkit-text-stroke: 2px #000; }
+  .ring { position: absolute; z-index: 54; border: 6px solid #fff; border-radius: 50%; transform: translate(-50%, -50%); opacity: .8; }
+
+  .shard { position: absolute; inset: 0; }
+  .flash { position: absolute; inset: 0; z-index: 70; pointer-events: none;
+    background: radial-gradient(circle at 1000px 560px, #fff 0 40px, color-mix(in srgb, #fff 60%, transparent) 90px, transparent 260px); }
+  .speed { position: absolute; inset: 0; z-index: 69; pointer-events: none;
+    background: repeating-conic-gradient(from 0deg at 1000px 560px, rgba(255,255,255,.55) 0 .6deg, transparent .6deg 7deg);
+    -webkit-mask-image: radial-gradient(circle at 1000px 560px, transparent 280px, #000 700px);
+            mask-image: radial-gradient(circle at 1000px 560px, transparent 280px, #000 700px); }
+
+  #ui { position: fixed; left: 12px; bottom: 12px; z-index: 100; display: flex; gap: 6px; font: 14px system-ui; }
+  #ui button { background: #111; color: #ddd; border: 1px solid #444; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+  #ui button.on { background: var(--b); color: #000; border-color: var(--b); }
+</style>
+</head>
+<body>
+<div id="view"><div id="stage"></div></div>
+<div id="ui">
+  <button data-f="calm">1 · calm</button>
+  <button data-f="touch">2 · hover + click</button>
+  <button data-f="drop">3 · drop</button>
+</div>
+<script>
+const PIN = '../../aesthetic-worlds/references/_moodboard/pinterest-board/';
+const LIST = ["001-9cf00d7e6a1973607e84a77a334bdcab.gif", "002-ddc85e7e2088c8f5b1b511af5b022d65.png", "003-e3b4eee521d9f37fd36ec5f15b3d394c.gif", "004-f759c64308427d16bb7bd5b986bbe547.jpg", "005-20078364290ab9351b89749d37dd9314.jpg", "006-f13b4899b33a71149c909411e56a2e06.jpg", "007-ea4b108ae201159b7d9762787dd4063c.jpg", "008-5da45006c616d4a6118f6eb45dea6016.png", "009-0f18e34af60dc641ea0ab8dbd110febd.jpg", "010-ab60f62563366317ed180d42e385aa9e.jpg", "011-4a8674dc002eb5163207f2ecbaafd657.jpg", "012-d52fa6160c76e89f28e26f137e838187.jpg", "013-83d3319c1c5618fc7a447685ff173ee2.png", "014-898fa66755980b76cd0870efbf50051d.jpg", "015-653bcb84a06cdd5eee85212a5e059d61.jpg", "016-7d63629a246ee97e2b398f421f40b555.jpg", "017-62608c2c2519982f811ddb3d9feeec62.jpg", "018-ad7152a3701717e5741f7c5b0ca88089.jpg", "019-a6e1ac321939c7c55a71de6c033a0e34.jpg", "020-08c3c6f99f3f3c269f08332601ad6a0a.jpg", "021-b5e4b3bb5c1f9e5ed02029cb5d9f0045.jpg", "022-0b37786a2b5929d762c373bae5190d64.jpg", "023-606c83fd6fa22293cd97fdda29aa31a7.jpg", "024-7580379959f87e37bd83b6c4e3a47570.jpg", "025-03da7d738b9351d189f31db5efa838d6.jpg", "026-b0285590abfacc7a1bb17b36fdacd9c1.jpg", "027-987087ac2d7e9b0828f3e4df75f6112f.jpg", "028-bb931e74d881fc27e6e3377606c9cc39.jpg", "029-87444213fb3016342bfb4a341c39f322.jpg", "030-1490849970fcfcd163cdeb93672ae53d.png", "031-e63ccfc16384ef63e98b4d3c20b5f866.gif", "032-526b48ef8e5ad0e93b9994e40c58688a.jpg", "033-45f96ef2090224b8e9e24d357122cf1f.jpg", "034-4d5119fb8200021e4bcb0dce7ba0ea92.jpg", "035-310b9d87fc5ae77fd10977fcded06abe.jpg", "036-e7ca520feb1ed0d6e24c7c5c8f228751.jpg", "037-0811ac5341f9137abd6d3dbe69f1c9e6.jpg", "038-c944f12cd22744b5a9a9f88ecf33cce6.jpg", "039-448aba62a53dcf8eb586cd50d747754d.jpg", "040-c6c3608cb4f1eb5b2fbab7ec3a0f84dc.jpg", "041-35363b61a0d94f2d870dcae84ae1b8f5.png", "042-9544e303b0104a560588c9cb01d011bb.jpg", "043-cc7a1d732add8795387e5471ecd0b90a.jpg", "044-659d1200b1333850c4e4c0d79df20d6e.jpg", "045-e475371b5f99f8107b92806a700f77f6.jpg", "046-88f607a57b72f87a24ce4d77b9b9ca0f.jpg", "047-a58ece095ac13f0d66198fffa69b0c08.jpg", "048-09b6a3912d1b931f7463912d024ed943.jpg", "049-4fe256163712572d35842ce0f1e016cc.jpg", "050-e6004acf31574ee40c8f40b30142a73d.png", "051-d077dc0e82e47998c63a44012f97a87b.jpg", "052-d3dbb800b7cd7d51820aede05fe3db1a.jpg", "053-bc3ad0ff1601716826cdba93b83385bc.jpg", "054-0a7698bde18bfb6f59b282ad9bf33b2f.jpg", "055-568c045b9fea719081c21c624edbcc32.jpg", "056-1426c59f6a7c33d94fa4ddecf8f0afbb.jpg", "057-af0fa7b3f307daa8322f510d887cb60b.jpg", "058-cb6ef01fb7603c84eda539f7869c17c1.jpg", "059-69f0e5d08818a1e440bc2b7c6513cff3.jpg", "060-b7e4cc28e0a9d16898357ff5418b971a.jpg", "061-34bf52048c39415dab34319d1eaf3a5d.png", "062-519992bd1b5467ad3529921ba0971ee1.jpg", "063-f16628611ec76c1fdf6bad8f5dcf30ec.jpg", "064-9dd08f3bdbcbe96948657169dc35475c.png", "065-bf5711fcdb9bb798e73552f9466ff411.jpg", "066-4bb26459adf2039f064a90d0959ef363.jpg", "067-0905d3b8193f66079ac333fb57e30a22.jpg", "068-78801748a2ee92c66ed5e53de7101af1.jpg", "069-f7b3b660be72ddfc956c0f1d90f012f1.jpg", "070-d15498ec3870783aec0b15d3d7a09fb8.jpg", "071-ee49a68b96b93e1e1e53981a5f3cb390.jpg", "072-50ee97aad5017b96c258b2da8ba7825c.jpg", "073-1da370e477558cfe5c9e5736d2c21c54.jpg", "074-be7508cedff1a53577b10c4415bbff05.jpg", "075-51830e0c8d932c17be292f3902b7144d.jpg", "076-8a9e02a99e2f3d9565e5637a42561c44.jpg", "077-75f0b162e2502e78380898940739acc0.jpg", "078-c4f0399463d950a1427c2dcb5cbba7a3.gif", "079-6ec65e42db663e89174e81227441a456.png", "080-e275694df90fcabbe4e6f83a52d82532.jpg", "081-0c60e6b8f896a4e50d7b27fc16c1c498.jpg", "082-5aa7d09e4d180a1b93b75e66fd3484b5.jpg", "083-38f5183c3a76b1155fd804da2c7e55f2.png", "084-4ec9bada86c16d877978364a36688f1b.jpg", "085-eaa502c02855305228a423e943bd9adf.jpg", "086-e9afc1a678e5929a7975b763b2ba30bc.jpg", "087-ba5823a7792f9667d66e31f9268d1d8c.jpg", "088-3da5d040d0f3775fb0760744216e9b59.png", "089-b1a6c1f5f1944c43ddd0d4a9c202cefc.png", "090-24e7292cc2af550003a07cf7d82c0799.jpg", "091-9caa7af7bd3dba681e7ef6201afbdcb9.jpg", "092-56feeb5ade0057698496f6f41bc5a3d2.jpg", "093-28e72014d35f8a2605d2d3a067c7cc00.jpg", "094-2d354adeba6219f50edce6418921a9c5.jpg", "095-0c022d348ae27b94b14a5f5108218c9c.jpg", "096-f0d1bd856328963988490795f7b75800.jpg", "097-842fb51865c270e52f2b0135ff2ba1c4.jpg", "098-691b98b8766e09fd5df8a641a7803ed0.jpg", "099-c118096d35eac8dbd4624788046df2eb.jpg", "100-ded3c5456f24de21a9b1df9c8e32d3d2.jpg", "101-1b875d709134c744691a60466bff4d10.jpg", "102-3981f03eb491b5109a019a731c3b1110.jpg", "103-e30fba8f1e0fc3c901690a3bd6d8f744.jpg", "104-b1c6489c6eb73df3c9a129f556ad3644.jpg", "105-3480cecf532c332966633a0045f07ef0.jpg", "106-c0200d63fb792fd29f2dd0d9d3fa74c6.png", "107-42293f2f655d9072aa45db06032b7f22.jpg", "108-cc6ebb279f4a3f7b2e4c5cbf6d4c343b.jpg", "109-b997b165a4d7b9f7ab398de0cdb9ad29.jpg", "110-afa0611b107e94cff77c843fb823b8a4.jpg", "111-3f4169c57c9d2fb21aaefaabf37855ad.jpg", "112-9db5bd63b6a28fcef88f60ef323e0679.jpg", "113-d6e05dfcc57459660c1bb09d88a0d94b.jpg", "114-a739b5833b08727b8be1faa9608e3e0d.webp", "115-7aa6c5d6a63bc44ff4dc7ef82e03dc0d.jpg", "116-ad2c24bc47ca44f46ef534a02c9ca62d.jpg", "117-0a8f29d79bc6872c688de651bf4db27f.jpg", "118-07782fccee13c514007ba1c78652995e.jpg", "119-d0ddb396aca2f226f73c16905a3b0bcf.jpg", "120-02d38c151f1f73048772e38fc95b20d5.jpg", "121-9364338f0ba089c95d6067a0e8888f57.jpg", "122-417d845fb2d0bdd5194b528098cbd49e.jpg", "123-224cc668ed44431d91ac3bd581da1e6c.jpg", "124-9c1e3c484b30b089cd6dfba86fdbacc9.jpg", "125-3ed0e2013f818c9b691b21ca423f132b.gif", "126-61b9654117e4fd91806a8abccd1ff711.jpg", "127-60c2a5cc49e304fa73a64c04c74f3e0e.jpg", "128-774618908362ff227cf6bafb8152b2e9.jpg", "129-eabfb9158f2c2fd3a05b520e09546a1c.jpg", "130-937724726dbe1e83a8dd1bc91c27a84e.jpg", "131-3449a0fc6919958633a4f3647593e436.jpg", "132-766d645287c796d750aaab4a805ede82.jpg", "133-899203ea876889653b52cb185e2e5b98.jpg", "134-5a3391b4d7bfb5acff9b5a08e8339176.jpg", "135-d19de8465834087ed84f11ddaf23807e.jpg", "136-b8b872266802093e438c64cfb665e9c3.jpg", "137-50e7e38f756c3822d7e5b5d7fd243887.jpg", "138-eccd2b8766c6fa2e756b09557b4fbfea.jpg", "139-ec9f4624a7ed58ae22deedaa703aa99c.png", "140-4a09c373c32d37c229f24d6765ed8b6c.jpg", "141-f2c482ea78e795230fd85de7caf7da4f.jpg", "142-5174388b0a5af577ad43f5b6b6d2618c.jpg", "143-798c06cd89d066c01a27469ca96c2ce7.jpg", "144-9e11fbe436e47695f556f8ca26a11279.jpg", "145-b655f7f75e253a760dcf3dc3e3006e0b.png", "146-f92b746eb6a42dcd30e0fe98e287a043.jpg", "147-142df1ca5f1c89105a779611e9be5bc7.jpg", "148-71da126978a336f0b1a5f8a24bd28a0b.jpg", "149-cf5022c1831570f7c4216cfea86dca9b.jpg", "150-538b637feb28acd4b92d09d62db4cb07.png", "151-286547f12e2d320ad0ecb0b5f833bdd4.jpg", "152-42012785c257591d46576fcb2c942f48.jpg", "153-7ecafe50c8771d99acde965f2e21b0e0.jpg", "154-0846492eebddb2d0000d55ab846f91cc.jpg", "155-23e661be87fac673711b6fab964dc260.png", "156-e121050b014c84edd8a8ae3451d03bd3.jpg", "157-13c715769d1e8d2ca62bf43f3aa85921.jpg", "158-1ec168c0772eeed3c4754d7398ac096b.png", "159-745fa4e6654292a4cde77b8e6651baaf.jpg", "160-6e844bb822dc1d93ea223204defdc546.jpg", "161-96cb48dc87bf2416590dbc71b1af23da.jpg", "162-7ff663d89308c8a062e181c53bdc0682.jpg", "163-3cd7d7ec0574b54283c1724f709daac0.png", "164-387a45dfad3390e9558684839fed1696.png", "165-26b262462d427e4fa4c34bd271d5e88d.png", "166-b68655c738d111b8c73e9fe6a32e5f20.jpg", "167-26e70c63d7a291c35b85cabbbd11969d.jpg", "168-a069670c2f675479697dd94cd112cfed.jpg", "169-f1de95a62653ccdfe5dfba40531879ca.jpg", "170-730dd72d7747380ce19a586b0b3a7833.jpg", "171-ef7e3f4bc24a54ca470c8dde06857134.jpg", "172-b328f2fa70c428e912008080153ca0ce.jpg", "173-ec2c77cb85b06404cec8c0d46c54f200.jpg", "174-c0fdd5503ea2e4bb54114ae6f66914e1.jpg", "175-3765baf3061478867359a2b71b23f2a6.jpg", "176-ecdc9aafa9f364bc98cbbbf67a521565.jpg", "177-93055d253235b90c653c6beb85906b73.jpg", "178-45b8b93f06474621a1a830eb8e74a3e6.jpg", "179-0896e4d799296d27e62dade359ae2f0f.jpg", "180-e3b3dfd8d326c3e9077bd132467a6692.jpg", "181-d8f9166c8d937a4abea0b27d9f8f0e4a.jpg", "182-b1d2089dea2501d06d5e26c389aa5029.jpg", "183-e82d87aead767727cf3480941f61d4e8.jpg", "184-7de7b19bd9f37c29ba20a882d3f53ed0.jpg", "185-98bd5c088c71acf9d91b8cff7594d3ce.jpg", "186-0413181ab5d367e08c961c195769e012.jpg", "187-9b5c2c08b2e5b126a4fd6e93059985dc.webp", "188-2dc7ad188a868003adba24bc3a1d42dc.png", "189-8130a1290969cc89f34cf47c541a4a58.jpg", "190-e2dd4398efdb4f3d6b427093c9b9d22e.jpg", "191-c170d181b73d573ca4ee7336d0266e13.jpg", "192-2941fe1826d85dae41ae7a7c666280b9.jpg", "193-5cc10446863c892ce202e292e221eb10.gif", "194-beec2de923d4d7af443bdd53d1354123.jpg", "195-97bb524de2eef940fe61fd43aaba0ac3.jpg", "196-b8bec62ed1e8c2badd899a856170e760.jpg", "197-1a361e34bbd0485c3bdc7008ea00bf3f.jpg", "198-6aa531c19e785eff420b8500e94ca884.jpg", "199-0afb6e8173e5defa3ec038cdd32bee40.jpg", "200-de642c5c3290107ac0331426580fc70b.jpg", "201-b033edb99f8e0b35826e5535779804e3.jpg", "202-4b735254723cb3a6a33b719eec13a279.jpg", "203-2c3c5a4793c8c6b47e576fc6717fddee.jpg", "204-bd3c06045bb62527d1f775651d7e167e.jpg", "205-e422c22e28125bfcc0b449e0b2e23852.jpg", "206-47dc8903ea3981ce6e6cdae0ad6a28af.jpg", "207-414179da424687d20b52e628967ce581.jpg", "208-2c4cd664aa8099542ad3d5c059bb0c14.jpg", "209-96995eb3c7ee2f4f4a1c39780c1c8954.jpg", "210-c58c1ac5e764bb0c67682968199ee2cb.jpg", "211-172d9d9cc0583c0d1d29f7c74a69f98d.jpg", "212-e4ca01b3663ad89f3b9cdc34d1df924d.jpg", "213-021af8fea980c305927126aedd4880a3.jpg", "214-5e8a1501022969df31bf038c9fabf299.jpg", "215-a0f9b60a79e66d48f42938ea2f42f9b9.jpg", "216-5ea1f60ccab691166592e8bc21651d5d.jpg", "217-9b20c99137e61bfa5aa6a823a112940f.jpg", "218-08223faf8c153d252deb19c95571f047.png", "219-ceb12301bd4fbe04083c350edb15e866.jpg", "220-3619c78099935ccc71c37fa3ea850772.jpg", "221-06bd9ce610f384d362b834deeaf4ab04.jpg", "222-8ba7e38d9d52c545a86e12ddae57001e.jpg", "223-d5e4ac26cdf6c7b17bec9de117ef6518.jpg", "224-d8af8084a5259666815e800b6216f2f2.jpg", "225-c358ad1377407dd58803c276dafa5520.webp", "226-4908d6ef7ee73e7306a7cc103c6ad205.png", "227-b24cdc4248e809da4e1646d5c86b43d8.jpg", "228-8aa1121ea19d3fac8532aecc302a2b40.png", "229-7dcb9608e904e259f7cb211b3029b316.jpg", "230-15ac770e0bfef747f67d514b3186319e.jpg", "231-517a704b0d517ac3455bd8611225a0b4.png", "232-52808aa0044c3f6c365bb6b195c3be07.jpg", "233-65f7a379c1007c2ab72e43b00874984a.jpg", "234-c9c9ae03a4a2da3e06950aec33ebe3fb.png", "235-5ae17042244b67b991bab25d87885b71.jpg", "236-379b9a51f9125943990c36850035c602.png", "237-bbc055674d2bafa049700f071aa452da.jpg", "238-4478c54b9a3d4bc1bc3a060fb0ce448c.jpg", "239-1609ed723a06dd1165029c97d7af7059.jpg", "240-81c2d5db59757d2ab8f1730dc26a0165.jpg", "241-d42c89a1b6515efe2fc862790bf85588.jpg", "242-b3cc08fe3b6d80e219ba3c2f64dcbc33.jpg", "243-b81ec9178a9ef6153eaef149b0ba32df.jpg", "244-001e7f49b1838820c7f3fabb8589f5a3.jpg", "245-d8e211a7dc11d5b49dc67978684c6972.jpg", "246-fad1207b40142469994ecf0b9370825c.jpg", "247-838338aad36177e2645afce271db7d1f.jpg", "248-bed66192d9c85b4bb36cda9222a9d3a3.jpg", "249-32b66dadf82cc3ecae9bcce4d8ce10d9.jpg", "250-d60b1d7134953851fe5e9865c713e363.jpg", "251-6f50e64feeb6f7a94297b402ea7cddb6.jpg", "252-7dea5259c00bad03b39ed1b906ef76e3.jpg", "253-35c122b6c75ad827290cfd3b922e979d.jpg", "254-920afeb28be349fb2407a593b8f7adcc.jpg", "255-07304cd28bde2828eeefa5fe2bdbf964.jpg"];
+let FILES = {};
+// [id, x, y, w, h, rot, style, extra]
+const SLOTS = [
+  ['212', 520, 110, 300, 400, -9, 'duo'],
+  ['184', 330, 300, 360, 270, 4, 'shadow torn'],
+  ['216', 50, 420, 390, 520, -5, 'shadow tape'],
+  ['159', 1640, 30, 250, 340, 5, 'shadow'],
+  ['033', 1290, 70, 440, 330, 2, 'win', '033.JPG - Paint'],
+  ['003', 1040, 26, 280, 220, -3, 'win', 'SIGNAL.GIF'],
+  ['154', 1430, 420, 370, 470, 6, 'shadow tape', 'hover'],
+  ['098', 640, 880, 560, 180, -1, 'shadow torn'],
+  ['019', 420, 640, 300, 300, 0, 'circle shadow'],
+  ['001', 1180, 690, 300, 300, -8, 'sticker shadow'],
+  ['142', 1720, 760, 230, 230, -4, 'duo'],
+  ['227', 30, 860, 330, 240, 3, 'shadow tape'],
+  ['063', 820, 150, 640, 780, -3, 'plates', 'hero'],
+];
+
+function src(id) { return PIN + FILES[id]; }
+function jag(seed) {            // torn-paper polygon
+  let s = seed * 9301 % 233280, r = () => (s = (s * 9301 + 49297) % 233280) / 233280;
+  const p = [];
+  for (let i = 0; i <= 24; i++) p.push(`${i / 24 * 100}% ${r() * 5}%`);
+  for (let i = 1; i <= 16; i++) p.push(`${100 - r() * 4}% ${i / 16 * 100}%`);
+  for (let i = 23; i >= 0; i--) p.push(`${i / 24 * 100}% ${100 - r() * 5}%`);
+  for (let i = 15; i >= 1; i--) p.push(`${r() * 4}% ${i / 16 * 100}%`);
+  return `polygon(${p.join(',')})`;
+}
+
+function buildComp(frame) {
+  const c = document.createElement('div'); c.className = 'comp';
+  c.innerHTML = `<div class="rays"></div><div class="dots"></div><div class="bigtype">SICK IMAGES</div>`;
+  SLOTS.forEach(([id, x, y, w, h, rot, style, extra], i) => {
+    const d = document.createElement('div');
+    d.className = 'pin ' + style + (extra === 'hover' && frame === 'touch' ? ' holo' : '');
+    Object.assign(d.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px', transform: `rotate(${rot}deg)`, zIndex: extra === 'hero' ? 20 : i + 1 });
+    if (style.includes('win')) {
+      d.innerHTML = `<div class="bar"><b>${extra}</b><span class="btns"><span>_</span><span>□</span><span>x</span></span></div><div class="body"><img src="${src(id)}"></div>`;
+    } else {
+      d.innerHTML = `<img src="${src(id)}">`;
+    }
+    if (style.includes('torn')) d.firstChild.style.clipPath = jag(i + 3);
+    c.appendChild(d);
+  });
+  c.insertAdjacentHTML('beforeend', `
+    <div class="mast"><div class="time">22:41</div>
+      <div class="line">SICK IMAGES <i>///</i> ISSUE 255 <i>///</i> SUN 16 NOV 2026</div></div>
+    <div class="kanji">深夜</div><div class="barcode"></div>
+    <div class="np"><div class="tag">NOW PLAYING</div>
+      <div class="title">Adrenaline<br>Deadcrow remix</div>
+      <div class="chips"><span style="background:var(--a)"></span><span style="background:var(--b)"></span><span style="background:var(--c)"></span><span style="background:var(--d)"></span><span style="background:var(--y)"></span></div></div>`);
+  return c;
+}
+
+function render(frame) {
+  const st = document.getElementById('stage'); st.innerHTML = '';
+  document.querySelectorAll('#ui button').forEach(b => b.classList.toggle('on', b.dataset.f === frame));
+  if (frame !== 'drop') {
+    st.appendChild(buildComp(frame));
+    if (frame === 'touch') {
+      st.insertAdjacentHTML('beforeend', `
+        <div class="cursor" style="left:1640px;top:640px"></div>
+        <div class="ring" style="left:1010px;top:800px;width:520px;height:520px"></div>
+        <div class="ring" style="left:1010px;top:800px;width:700px;height:700px;opacity:.35;border-width:3px"></div>
+        <div class="slam" style="left:1010px;top:800px"><div class="star back"></div><div class="star"></div><b>ドン</b></div>`);
+    }
+    return;
+  }
+  // drop: shatter the composition into shards flying out from the centre
+  const cx = 1000, cy = 560, N = 15;
+  let s = 7, r = () => (s = (s * 9301 + 49297) % 233280) / 233280;
+  const angs = [];
+  for (let i = 0; i < N; i++) angs.push((i + r() * 0.7) / N * Math.PI * 2);
+  const edge = a => { const dx = Math.cos(a), dy = Math.sin(a); const t = Math.min(dx ? Math.abs((dx > 0 ? 1920 - cx : cx) / dx) : 1e9, dy ? Math.abs((dy > 0 ? 1080 - cy : cy) / dy) : 1e9); return [cx + dx * t * 1.4, cy + dy * t * 1.4]; };
+  for (let i = 0; i < N; i++) {
+    const a0 = angs[i], a1 = angs[(i + 1) % N] + (i === N - 1 ? Math.PI * 2 : 0), am = (a0 + a1) / 2;
+    const rin = 60 + r() * 120;
+    const [x0, y0] = edge(a0), [x1, y1] = edge(a1), [xm, ym] = edge(am);
+    const pts = [[cx + Math.cos(a0) * rin, cy + Math.sin(a0) * rin], [x0, y0], [xm, ym], [x1, y1], [cx + Math.cos(a1) * rin, cy + Math.sin(a1) * rin]];
+    const sh = document.createElement('div'); sh.className = 'shard';
+    sh.style.clipPath = `polygon(${pts.map(p => `${p[0]}px ${p[1]}px`).join(',')})`;
+    const push = 40 + r() * 110, rot = (r() - .5) * 10;
+    sh.style.transform = `translate(${Math.cos(am) * push}px, ${Math.sin(am) * push}px) rotate(${rot}deg) scale(${1.02 + r() * .06})`;
+    sh.style.transformOrigin = `${cx}px ${cy}px`;
+    if (i % 4 === 1) sh.style.filter = 'hue-rotate(160deg) saturate(1.6)';
+    if (i % 5 === 3) sh.style.filter = 'invert(1) hue-rotate(180deg)';
+    sh.appendChild(buildComp('drop'));
+    st.appendChild(sh);
+  }
+  st.insertAdjacentHTML('beforeend', `<div class="speed"></div><div class="flash"></div>`);
+}
+
+function fit() { const st = document.getElementById('stage'); const k = Math.min(innerWidth / 1920, innerHeight / 1080); st.style.transform = `translate(-50%, -50%) scale(${k})`; }
+addEventListener('resize', fit);
+document.querySelectorAll('#ui button').forEach(b => b.onclick = () => { history.replaceState(null, '', '?f=' + b.dataset.f); render(b.dataset.f); });
+addEventListener('keydown', e => { const f = { 1: 'calm', 2: 'touch', 3: 'drop' }[e.key]; if (f) render(f); });
+
+(async () => {
+  for (const f of LIST) FILES[f.slice(0, 3)] = f;
+  if (new URLSearchParams(location.search).get('shot')) document.getElementById('ui').style.display = 'none';
+  fit(); render(new URLSearchParams(location.search).get('f') || 'calm');
+})();
+</script>
+</body>
+</html>
