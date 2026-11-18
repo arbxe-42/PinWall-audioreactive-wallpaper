@@ -85,8 +85,9 @@ publish without their explicit yes.**
      (old = trigger confidence `z0` vs the 80th percentile of the last 200 hits, ^1.5, floor 0.12, plus
      main.js's old beat-grid damping/accents and base motion) and `settle` = 0 for the first 10 s of a
      section (after >= 3 s without hits, or a drop), ramping to 1 by 25 s; main.js mixes every effect.
-     The listener sends `z0` (trigger) next to `z` (20 ms peak). If the user prefers one feel outright,
-     pin `settle` to 0 or 1 in `audio.js`.
+     The listener sends `z0` (trigger) next to `z` (20 ms peak). **Pinned to the settled (200-hit) feel since
+     03:25** at the user's request ("just stay with the full first version for a bit"): `PIN_SETTLE = 1` at
+     the top of `audio.js` (0 = start-of-drop curve always, null = the crossfade).
    - the old rule trigger (low-band flux + rise + 180 ms hold + loudness gate) is still in
      `detect.py` behind `nn=0` (also the fallback if `kicknet.npz` is missing)
    - `server.py` sends `{type: 'hit', at: <epoch ms when YOU will hear it>}`; `audio.js` `_hit()`

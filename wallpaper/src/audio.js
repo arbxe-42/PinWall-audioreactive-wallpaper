@@ -3,6 +3,9 @@
 // always on the beat; when the clock isn't locked, no hits fire at all.
 // Fire visuals this many ms early: the screen shows a frame ~1-2 frames after it is drawn.
 export const LEAD = 45;
+// Hit feel: 1 = the 200-hit "settled" feel always (current choice), 0 = the 30 s start-of-drop curve always,
+// null = crossfade (start-of-drop curve for the first 10 s of a section, then the settled feel). See _hit.
+const PIN_SETTLE = 1;
 
 export class Music {
   constructor() {
@@ -140,7 +143,10 @@ export class Music {
     const strengthOld = 0.12 + 0.88 * Math.pow(Math.max(0, Math.min(1, (z0 - 0.5) / Math.max(0.05, p80o - 0.5))), 1.5);
     if (now - (this.lastMsgAt || 0) > 3000) this.sectionStart = now;
     this.lastMsgAt = now;
-    const settle = Math.max(0, Math.min(1, (now - (this.sectionStart || now) - 10000) / 15000));
+    // PINNED to 1 (2026-11-18 03:25, the user: "just stay with the full first version for a bit") = the
+    // 200-hit feel all the time. For the crossfade (new curve at drop starts) use the computed value instead.
+    const settleCrossfade = Math.max(0, Math.min(1, (now - (this.sectionStart || now) - 10000) / 15000));
+    const settle = PIN_SETTLE != null ? PIN_SETTLE : settleCrossfade;
     const c = this.clock;
     let beat = false, down = false;
     if (c && c.locked) {
