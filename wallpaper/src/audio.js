@@ -6,6 +6,9 @@ export const LEAD = 45;
 // Hit feel: 1 = the 200-hit "settled" feel always (current choice), 0 = the 30 s start-of-drop curve always,
 // null = crossfade (start-of-drop curve for the first 10 s of a section, then the settled feel). See _hit.
 const PIN_SETTLE = 1;
+// The settled feel scales the 20 ms peak confidence (true, since 2026-11-18 03:40) or the trigger confidence
+// (false: the version the user picked at 03:25, fun but too close between real kicks and extras).
+const SETTLED_USES_PEAK = true;
 
 export class Music {
   constructor() {
@@ -19,7 +22,7 @@ export class Music {
     this.lastBeatAt = 0;
     this.handlers = { beat: [], hit: [], drop: [], mode: [], device: [] };
     this.zs = [];
-    this.zsOld = [];   // trigger confidences of the last 200 hits (the "settled" strength, see _hit)
+    this.zsOld = [];   // confidences of the last 40 hits (the "settled" strength, see _hit)
     this.liveMax = [1e-3, 1e-3, 1e-3];
     this.device = '';
     this._connect();
@@ -44,7 +47,7 @@ export class Music {
       else if (m.type === 'reload') setTimeout(() => location.reload(), 300);   // new images were imported
       else if (m.type === 'mode') { this.mode = m.mode; this.emit('mode', m.mode); }
       else if (m.type === 'hello') { this.mode = m.mode; this.device = m.device; this.emit('mode', m.mode); this.emit('device', m); }
-      else if (m.type === 'silence') { this.clock = null; this.zs = []; }
+      else if (m.type === 'silence') { this.clock = null; this.zs = []; this.zsOld = []; }
     };
   }
 
@@ -136,8 +139,12 @@ export class Music {
     // its beat-grid accents and base motion). The new curve above is better at the START of a drop (strong
     // from the first kick), so main.js crossfades: new only for the first 10 s of a section (after >= 3 s
     // without hits, or a drop), then over 15 s to the old one.
-    const z0 = m.z0 != null ? m.z0 : m.z;
-    this.zsOld.push(z0); if (this.zsOld.length > 200) this.zsOld.shift();
+    // which confidence the settled feel scales: the 20 ms PEAK (real kicks 0.83 / extras 0.39 strength over
+    // 30 songs) or the trigger value (0.59 / 0.34: kicks barely above extras, "doesn't hit the kicks enough")
+    const z0 = SETTLED_USES_PEAK ? m.z : (m.z0 != null ? m.z0 : m.z);
+    // the last 40 hits (~15 s of kicks; was 200, ~1 min): same kick/extra gap over 30 songs (0.45), stronger
+    // right after a pause (0.85 vs 0.80), and the previous song no longer shapes the next one's first minute
+    this.zsOld.push(z0); if (this.zsOld.length > 40) this.zsOld.shift();
     const so = [...this.zsOld].sort((a, b) => a - b);
     const p80o = so[Math.floor(so.length * 0.8)] || z0 || 1;
     const strengthOld = 0.12 + 0.88 * Math.pow(Math.max(0, Math.min(1, (z0 - 0.5) / Math.max(0.05, p80o - 0.5))), 1.5);

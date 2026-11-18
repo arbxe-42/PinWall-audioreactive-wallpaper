@@ -88,6 +88,17 @@ publish without their explicit yes.**
      The listener sends `z0` (trigger) next to `z` (20 ms peak). **Pinned to the settled (200-hit) feel since
      03:25** at the user's request ("just stay with the full first version for a bit"): `PIN_SETTLE = 1` at
      the top of `audio.js` (0 = start-of-drop curve always, null = the crossfade).
+   - **04:07, settled feel tuned** (the user: fun, the extras are kind of nice, but it "doesn't hit on the
+     kicks enough", and "200 hits is probably too long"): it now scales the 20 ms PEAK confidence
+     (`SETTLED_USES_PEAK`; real kicks 0.59 -> 0.83, extras 0.34 -> 0.39) against the last 40 hits (was
+     200; same kick/extra gap, stronger right after pauses, cleared on silence). Measured over 30 songs:
+     | formulation | real kicks | extras | gap |
+     |---|---|---|---|
+     | 200-hit, trigger conf (03:25) | 0.59 | 0.34 | 0.25 |
+     | fixed 0.6-0.75 ramp, peak | 1.00 | 0.46 | 0.54 |
+     | guarded 20 s ramp | 1.00 | 0.53 | 0.47 |
+     | 30 s p70 contrast curve | 0.89 | 0.16 | 0.73 |
+     | **40-hit, peak conf (live)** | **0.84** | **0.39** | **0.45** |
    - the old rule trigger (low-band flux + rise + 180 ms hold + loudness gate) is still in
      `detect.py` behind `nn=0` (also the fallback if `kicknet.npz` is missing)
    - `server.py` sends `{type: 'hit', at: <epoch ms when YOU will hear it>}`; `audio.js` `_hit()`
