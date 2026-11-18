@@ -110,8 +110,27 @@ function resize() {
 }
 
 // ---------------------------------------------------------------- layouts
+// When each pin was last on screen (id -> ms), kept across reloads in localStorage, so the whole folder
+// rotates (the user: "I'm seeing the same images over and over"). Layout picks push recently shown pins down
+// (fading over ~30 min) and choose among the good fits instead of always the single best one.
+S.shown = new Map();
+try { S.shown = new Map(Object.entries(JSON.parse(localStorage.getItem('pinwall_shown') || '{}'))); } catch (_) {}
+function markShown(ids) {
+  const now = Date.now();
+  for (const id of ids) S.shown.set(id, now);
+  clearTimeout(S.shownSave);
+  S.shownSave = setTimeout(() => {
+    try {
+      // both screens share this list: merge (latest time wins) instead of overwriting the other screen's
+      const stored = JSON.parse(localStorage.getItem('pinwall_shown') || '{}');
+      for (const [id, t] of S.shown) if (!(stored[id] >= t)) stored[id] = t;
+      for (const [id, t] of Object.entries(stored)) if (!(S.shown.get(id) >= t)) S.shown.set(id, t);
+      localStorage.setItem('pinwall_shown', JSON.stringify(stored));
+    } catch (_) {}
+  }, 5000);
+}
 function layoutOpts(extra = {}) {
-  return { seed: S.seed++, palette: S.coverPal, recent: S.recent, ...extra };
+  return { seed: S.seed++, palette: S.coverPal, recent: S.recent, shown: S.shown, now: Date.now(), ...extra };
 }
 function adopt(layout) {
   S.layout = layout;
@@ -121,6 +140,7 @@ function adopt(layout) {
   for (const c of S.back) S.recent.add(c.pin.id);
   for (const c of S.cards) S.recent.add(c.pin.id);
   if (S.recent.size > 80) S.recent = new Set([...S.recent].slice(-60));
+  markShown([...S.cards, ...S.back].map(c => c.pin.id));
 }
 const layoutPins = l => [...l.cards, ...(l.back || [])].map(c => c.pin);
 async function prepare(extra) {
@@ -167,13 +187,14 @@ function swapCard(i, kind = 0, dir = [1, 0], dur = 0.7) {
   const used = new Set(S.cards.map(x => x.pin.id));
   for (const id of S.recent) used.add(id);
   const slot = { w: c.w, h: c.h, mode: c.kind, role: c.role };
-  const pin = choosePin(S.pins, slot, used, { palette: S.coverPal }, rng(S.seed++));
+  const pin = choosePin(S.pins, slot, used, { palette: S.coverPal, shown: S.shown, now: Date.now() }, rng(S.seed++));
   if (!pin) return;
   const e = texs.get(pin);
   const start = () => {
     c.swap = { pin, crop: c.kind === 'win' ? cropFor(pin, c.w - 8 * S.layout.k, c.h - 40 * S.layout.k) : cropFor(pin, c.w, c.h),
                t0: S.time, dur, kind, dir };
     S.recent.add(pin.id);
+    markShown([pin.id]);
   };
   e.ready ? start() : e.promise.then(start);
 }
@@ -181,6 +202,10 @@ function finishSwaps() {
   for (const c of S.cards) {
     if (c.swap && S.time - c.swap.t0 >= c.swap.dur) { c.pin = c.swap.pin; c.crop = c.swap.crop; c.swap = null; }
   }
+}
+function heroCard() {
+  const i = S.cards.findIndex(c => c.role === 'hero' && !c.swap);
+  return i;
 }
 function randomCard(excludeHero = true) {
   const idx = S.cards.map((c, i) => i).filter(i => !S.cards[i].swap && !(excludeHero && S.cards[i].role));
@@ -200,6 +225,8 @@ music.on('beat', b => {
     S.fx.glitch = Math.max(S.fx.glitch, 0.75 * I); S.fx.gseed = Math.random() * 100;
   } else swapCard(randomCard(), 0, [1, 0], Math.min(0.9, b.period * 1.6 / 1000));
   if (S.bars % 32 === 0) relayout('fast');
+  // the big hero picture also changes halfway between new walls (it used to wait for a whole new wall)
+  else if (S.bars % 32 === 16) { const h = heroCard(); if (h >= 0) swapCard(h, 0, [1, 0], Math.min(1.4, b.period * 2.5 / 1000)); }
 });
 
 // hits: only on the eighth notes where kicks land, only while kicks are present
@@ -571,7 +598,13 @@ function frameBody() {
   if (amb && !TEST) {
     if (!S.nextAmbientSwap) S.nextAmbientSwap = S.time + 40 + Math.random() * 25;
     if (!S.nextAmbientLayout) S.nextAmbientLayout = S.time + 240;
-    if (S.time > S.nextAmbientSwap) { swapCard(randomCard(false), 0, [1, 0], 1.8); S.nextAmbientSwap = S.time + 50 + Math.random() * 25; }
+    if (S.time > S.nextAmbientSwap) {
+      // every other ambient swap is the big hero picture, so it rotates as often as the rest
+      S.ambSwaps = (S.ambSwaps || 0) + 1;
+      const h = S.ambSwaps % 2 === 0 ? heroCard() : -1;
+      swapCard(h >= 0 ? h : randomCard(false), 0, [1, 0], h >= 0 ? 2.4 : 1.8);
+      S.nextAmbientSwap = S.time + 50 + Math.random() * 25;
+    }
     if (S.time > S.nextAmbientLayout) { relayout('slow'); S.nextAmbientLayout = S.time + 220 + Math.random() * 60; }
   }
   finishSwaps();

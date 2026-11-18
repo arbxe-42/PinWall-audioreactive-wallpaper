@@ -109,17 +109,31 @@ function pinCost(pin, slot, opts, r) {
   if (pin.family === 'ink') cost += 0.8;                   // colour and light first, ink only a flavour
   if (opts.palette) cost += paletteScore(pin, opts.palette) * 2.5;
   if (opts.recent && opts.recent.has(pin.id)) cost += 2.0;
+  // long-term freshness: pins shown recently (any session: opts.shown = id -> ms, kept in localStorage) are
+  // pushed down, fading over ~30 min, so the whole folder rotates instead of the same best fits
+  if (opts.shown) {
+    const t = opts.shown.get(pin.id);
+    if (t != null) cost += 3.0 * Math.exp(-Math.max(0, (opts.now ?? Date.now()) - t) / 1.8e6);
+  }
   return cost + r() * 1.2;
 }
 
 export function choosePin(pins, slot, used, opts, r) {
-  let best = null, bc = 1e9;
+  const cand = [];
   for (const p of pins) {
     if (used.has(p.id)) continue;
-    const c = pinCost(p, slot, opts, r);
-    if (c < bc) { bc = c; best = p; }
+    cand.push([pinCost(p, slot, opts, r), p]);
   }
-  return best;
+  if (!cand.length) return null;
+  cand.sort((a, b) => a[0] - b[0]);
+  if (opts.pick === 'best') return cand[0][1];
+  // pick among the good fits, not always the single best one (that showed the same pins over and over):
+  // the 14 lowest-cost pins, weighted by how much better they fit (shape, cover colours, freshness)
+  const top = cand.slice(0, 14), c0 = top[0][0];
+  const w = top.map(([c]) => Math.exp(-(c - c0) / 0.7));
+  let x = r() * w.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < top.length; i++) { x -= w[i]; if (x <= 0) return top[i][1]; }
+  return top[top.length - 1][1];
 }
 
 // Cover-fit crop of a pin into a slot shape; portraits keep their upper part (faces).

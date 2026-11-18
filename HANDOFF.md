@@ -239,6 +239,16 @@ sketch/, test/, MORNING.html   original look sketch, stills and captures (contai
 - **Headless Edge can't do WebGL here:** the collage comes out black. Use Lively screenshots or the
   visible pane.
 
+## Picture rotation (2026-11-18, the user: "seeing the same images over and over", "especially the big one")
+
+- `layout.js` `choosePin` picks among the 14 best-fitting pins (weighted by fit) instead of always the single
+  best; `pinCost` adds a freshness penalty (3.0, fading over ~30 min) from `S.shown` (id -> last shown ms,
+  saved in localStorage `pinwall_shown`, merged between the two screens). Colour coding to the album cover
+  is kept: colour distance of shown pins 0.36 (old 0.32, random 0.50).
+- Simulated hour with one cover: 250 of 255 pins shown (old 140); the hero spot 40 different pictures
+  (old 20), none more than 5 times (old 9).
+- The hero now also swaps mid-wall: at bar 16 of every 32 during music, and every other ambient swap.
+
 ## Gotchas learned the hard way
 
 - **Lively pauses** a screen's wallpaper when a maximised or full-screen window covers it (logged as
