@@ -67,7 +67,8 @@ publish without their explicit yes.**
      after 1.5 s without a hit the next needs 0.8) is OFF since the user said hits sometimes "don't even
      start on the drop": with it, the first hit after a pause came > 4 s late after 13 of 75 pauses (6 of
      75 without it); it bought only 3 points of precision (0.88 -> 0.85)
-   - **Peak filter (04:35):** a hit whose 20 ms peak stays under `nn_bar` 0.65 is dropped (the user: "picking
+   - **Peak filter (04:35, turned OFF 04:40: the user found it "missing too much now"; `nn_bar=0.0`):** at
+     0.65 a hit whose 20 ms peak stays under the bar is dropped (the user: "picking
      up a lot of extra stuff, especially bass hits"): extras 12.9 -> 6.7/min, hits on a kick 85% -> 91%,
      stem-label kicks caught 80% -> 70% (softer ones), the user's Dark Arm taps still 96%. Keeps real kicks'
      timing (a higher trigger bar gives the same numbers but fires later). KickNet standalone: `min_peak`.

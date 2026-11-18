@@ -16,7 +16,7 @@ from .kicknet import Net, Stream, WEIGHTS
 
 class KickDetector:
     def __init__(self, sample_rate, weights=WEIGHTS, threshold=0.5, min_gap=0.09, idle=1.5, idle_threshold=0.0,
-                 peak_frames=2, min_peak=0.65, nfft=2048):
+                 peak_frames=2, min_peak=0.0, nfft=2048):
         """
         threshold       fire when the kick confidence reaches this while still rising (live: 0.5)
         min_gap         at most one kick per this many seconds (live: 0.09)
@@ -24,7 +24,7 @@ class KickDetector:
         peak_frames     a kick is reported this many 10 ms frames after it triggers, with the PEAK confidence over
                         them (real kicks keep climbing, stray hits stall: much better separated). 0 = report at once
         min_peak        drop a kick whose peak confidence stays under this (bass notes and other extras stall
-                        around 0.6; real kicks keep climbing). 0.65 halves the extras; 0 keeps everything
+                        around 0.6; real kicks keep climbing). Off by default; 0.65 halves the extras but misses softer kicks
         idle_threshold  ... the next one needs this confidence. Off by default (0.0): 0.8 cut lone false hits
                         in breakdowns but also blocked the first kicks of drops (they often sit at 0.6-0.75).
         """
