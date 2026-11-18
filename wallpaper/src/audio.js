@@ -40,7 +40,7 @@ export class Music {
       else if (m.type === 'reload') setTimeout(() => location.reload(), 300);   // new images were imported
       else if (m.type === 'mode') { this.mode = m.mode; this.emit('mode', m.mode); }
       else if (m.type === 'hello') { this.mode = m.mode; this.device = m.device; this.emit('mode', m.mode); this.emit('device', m); }
-      else if (m.type === 'silence') { this.clock = null; }
+      else if (m.type === 'silence') { this.clock = null; this.zs = []; }
     };
   }
 
@@ -103,9 +103,14 @@ export class Music {
   // It is scheduled for the moment you hear it; on laptop speakers that moment has usually just passed,
   // so it fires at once (~40 ms late); on Bluetooth speakers there is time to land it exactly.
   _hit(m) {
-    this.zs.push(m.z); if (this.zs.length > 200) this.zs.shift();
-    const sorted = [...this.zs].sort((a, b) => a - b);
-    const p80 = sorted[Math.floor(sorted.length * 0.8)] || m.z || 1;
+    // the song's recent hits = the last 12 s (it used to be the last 200 hits, ~1 minute: after a drop or a
+    // new song the wall judged new kicks against the old section for a minute)
+    const now = Date.now();
+    this.zs.push([now, m.z]);
+    while (this.zs.length && now - this.zs[0][0] > 12000) this.zs.shift();
+    const sorted = this.zs.map(v => v[1]).sort((a, b) => a - b);
+    let p80 = sorted[Math.floor(sorted.length * 0.8)] || m.z || 1;
+    if (m.z <= 1) p80 = Math.max(0.75, p80);   // a clear KickNet kick (>= 0.75) always hits full, even the first
     let strength, soft = false;
     if (m.z <= 1) {
       // KickNet confidence (0.5 = just over the trigger, 1 = certain), relative to this song's recent hits:

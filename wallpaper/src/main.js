@@ -207,7 +207,10 @@ music.on('hit', h => {
   if (music.mode !== 'reactive' || S.paused) return;
   const I = settings.intensity;
   // KickNet hits carry their confidence in strength (down to 0.12); the old flux hits keep a 0.4 floor
-  const a = Math.max(h.soft ? 0.12 : 0.4, h.strength) * (h.beat ? 1 : 0.75);
+  // KickNet hits are real kicks (88% in tests): full strength whether or not the beat clock agrees (after a
+  // drop the clock needs 10-30 s to re-lock and sometimes sits on the wrong grid). The older flux hits keep
+  // the off-beat damping.
+  const a = Math.max(h.soft ? 0.12 : 0.4, h.strength) * (h.soft || h.beat ? 1 : 0.75);
   S.hits = (S.hits || 0) + 1;
   S.fx.punch = Math.max(S.fx.punch, (0.012 + 0.026 * a + (h.down ? 0.014 : 0)) * I);
   S.fx.pulse = 1;

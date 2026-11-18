@@ -65,8 +65,11 @@ publish without their explicit yes.**
    - fires when the kick activation crosses 0.5 while rising (`nn_kick`), at most one hit per 90 ms;
      after 1.5 s without a hit the next needs 0.8 (`nn_idle`, `nn_idle_thr`: lone hits in breakdowns
      were most of the remaining false ones); stamped at the attack (frame - 3); event type `kick_fast`
-   - the hit's confidence `z` scales how hard it hits (`audio.js` `_hit`: relative to the song's recent
-     hits, 0.12..1, the user's idea): sure kicks punch, borderline ones (arp notes) only nudge
+   - the hit's confidence `z` scales how hard it hits (`audio.js` `_hit`: relative to the last 12 s of
+     hits, reference floored at 0.75, reset on silence; 0.12..1, the user's idea): sure kicks punch,
+     borderline ones (arp notes) only nudge. KickNet hits are NOT damped when off the beat-clock grid:
+     the user noticed hits "need a minute after drops"; the clock needs 10-30 s to re-lock after a change
+     (sometimes sits on the wrong grid for a minute, e.g. Tek Genesis) and the old 200-hit window took ~1 min
    - trained from the FULL MIX with labels from demucs drum stems of all 31 full tracks
      (`bench/stem_labels.py` v7, see below). Bass and vocals are in the input, never in the labels,
      which is what cut the "follows the vocals" hits. Adrenaline (14) is never trained on.
@@ -228,7 +231,8 @@ sketch/, test/, MORNING.html   original look sketch, stills and captures (contai
 
 0. **KickNet v7 (kick-only) went live 2026-11-18 ~02:09** (v6 at ~01:40) after the user asked to "make the audio reactive algorithm
    better". Not yet heard by the user on music: ask how it feels (vocals, soft kicks, breakcore).
-   Ideas not tried: train on more tracks (any new song: `bench/make_full_stems.py`, labels are
+   Next idea: drive the beat clock from KickNet's kicks instead of the flux envelope (cleaner onsets ->
+   faster, truer lock after changes; it still drives swaps, downbeat accents and the HUD). Ideas not tried: train on more tracks (any new song: `bench/make_full_stems.py`, labels are
    automatic), an ensemble of the 5 fold models (+5x 0.15 ms), a small GRU instead of the MLP.
    The packaged build (`dist/`, `tools/package.py`) must ship `kicknet.py` + `kicknet.npz`
    (weights are learned from the user's music: harmless numbers, but check before publishing).
