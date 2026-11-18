@@ -66,7 +66,7 @@ class Detector:
             rise_db=1.0, snap_ratio=10.0,  # kick candidate checks (see _frame)
             fast_k=5.0, fast_rise=3.0, fast_gap=0.11, fast_hold=0.18, sub_margin=-99.0, sub_big=8.0, gate_db=30.0,   # fast kick trigger
             td_lo_db=6.0, td_hi_db=4.0, td_lo_big=12.0, td_floor_db=14.0,   # time-domain kick trigger
-            nn=1.0, nn_kick=0.5, nn_snare=2.0, nn_gap=0.09, nn_idle=1.5, nn_idle_thr=0.8,   # KickNet trigger (listener/kicknet.py, kicknet.npz); nn=0 = the older rules below
+            nn=1.0, nn_kick=0.5, nn_snare=2.0, nn_gap=0.09, nn_idle=1.5, nn_idle_thr=0.0,   # KickNet trigger (listener/kicknet.py, kicknet.npz); nn=0 = the older rules below
             learn_hit=0.4, learn_miss=0.4,
             lock_conf=0.6,       # fraction of recent beats backed by an onset
             bias=0.027,          # reported times minus this = the drum attack (bench-calibrated, 31 clips)
@@ -231,8 +231,9 @@ class Detector:
         self.nn_prev = (k, sn)
         if n - self.nn_last < self.p["nn_gap"] * FPS:
             return []
-        # after a quiet stretch (no hit for nn_idle s) the first hit must be confident: in breakdowns the
-        # drum stem is silent, and lone hits there were most of the remaining false ones (-42%, same F)
+        # optional: after a quiet stretch (no hit for nn_idle s) the first hit must reach nn_idle_thr. OFF
+        # (0.0) since 2026-11-18: with the kick-only model it blocked drop starts (first hit > 4 s late after
+        # 13 of 75 pauses; drop kicks often sit at 0.6-0.75 confidence). Weak stray hits are soft anyway.
         idle = n - self.nn_last > self.p["nn_idle"] * FPS
         tk = max(self.p["nn_kick"], self.p["nn_idle_thr"]) if idle else self.p["nn_kick"]
         ts = max(self.p["nn_snare"], self.p["nn_idle_thr"]) if idle else self.p["nn_snare"]

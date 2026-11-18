@@ -15,14 +15,14 @@ from .kicknet import Net, Stream, WEIGHTS
 
 
 class KickDetector:
-    def __init__(self, sample_rate, weights=WEIGHTS, threshold=0.5, min_gap=0.09, idle=1.5, idle_threshold=0.8,
+    def __init__(self, sample_rate, weights=WEIGHTS, threshold=0.5, min_gap=0.09, idle=1.5, idle_threshold=0.0,
                  nfft=2048):
         """
         threshold       fire when the kick confidence reaches this while still rising (live: 0.5)
         min_gap         at most one kick per this many seconds (live: 0.09)
         idle            after this many seconds without a kick ...
-        idle_threshold  ... the next one needs this confidence (live: 1.5 s / 0.8; cuts lone false hits in
-                        breakdowns). Set idle=1e9 to turn it off.
+        idle_threshold  ... the next one needs this confidence. Off by default (0.0): 0.8 cut lone false hits
+                        in breakdowns but also blocked the first kicks of drops (they often sit at 0.6-0.75).
         """
         self.sr = sample_rate
         self.hop = int(round(sample_rate / 100.0))     # 10 ms frames

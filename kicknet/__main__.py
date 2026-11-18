@@ -3,7 +3,7 @@
   python -m kicknet song.wav                    print every kick (time in seconds, confidence)
   python -m kicknet song.wav --json kicks.json  ... or save them (--csv kicks.csv works too)
   python -m kicknet --live                      kicks in whatever the PC is playing right now (needs soundcard)
-  options: --threshold 0.5  --min-gap 0.09  --no-idle
+  options: --threshold 0.5  --min-gap 0.09
 """
 import argparse
 import json
@@ -23,7 +23,7 @@ def main(argv=None):
     ap.add_argument("--csv", help="write kicks to this CSV file")
     ap.add_argument("--threshold", type=float, default=0.5)
     ap.add_argument("--min-gap", type=float, default=0.09)
-    ap.add_argument("--no-idle", action="store_true", help="turn off the stricter first-hit-after-a-pause rule")
+    ap.add_argument("--no-idle", action="store_true", help=argparse.SUPPRESS)   # the rule is off by default now
     a = ap.parse_args(argv)
     kw = dict(threshold=a.threshold, min_gap=a.min_gap)
     if a.no_idle:

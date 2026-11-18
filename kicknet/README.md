@@ -23,7 +23,7 @@ From Python, streaming (feed blocks of any size, exactly like the live wallpaper
 
 ```python
 from kicknet import KickDetector
-det = KickDetector(sample_rate=48000)          # threshold=0.5, min_gap=0.09, idle=1.5, idle_threshold=0.8
+det = KickDetector(sample_rate=48000)          # threshold=0.5, min_gap=0.09
 for block in blocks:                           # mono float32, -1..1
     for k in det.process(block):
         print(k["time"], k["confidence"])
@@ -37,7 +37,8 @@ Every 10 ms, a 2048-point spectrum is folded into 40 log-spaced bands (40 Hz-14 
 (relative to a slowly decaying peak of the whole mix, so loudness doesn't matter) and its change over 10 and
 20 ms. The last 12 frames (120 ms, 1440 numbers) go through a small MLP (1440 → 128 → 64 → 1) that answers
 "was there a kick attack 30 ms ago?". A kick fires when that confidence reaches 0.5 while still rising, at most
-once per 90 ms; after 1.5 s without a kick the next one needs 0.8 (this cuts lone false hits in breakdowns).
+once per 90 ms. (An optional stricter first-hit-after-a-pause rule, `idle_threshold`, is off: it blocked the
+first kicks of drops.)
 
 It was trained on full mixes, with answers taken from demucs-separated **drum stems** of the same songs, so
 vocals, bass, arps and pads are in what it hears but never in its answers. The stem kick labels were built and
@@ -51,7 +52,7 @@ Scored with 5-fold cross-validation by song: each song is scored by a model that
 | | Kick P / R / F | Hits with no kick under them |
 |---|---|---|
 | rule-based trigger it replaced (low-band flux + gates) | 0.48 / 0.63 / 0.54 | 65 / min |
-| **KickNet v7** | **0.88 / 0.77 / 0.83** | **9.5 / min** |
+| **KickNet v7** | **0.85 / 0.80 / 0.83** | **~12 / min** |
 
 Against a person's hand-tapped kicks on one track: 96% of its kicks land on a tap, 96% of taps are caught.
 

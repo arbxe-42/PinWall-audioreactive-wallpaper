@@ -30,7 +30,7 @@ Measured on 31 of your tracks (`bench/report.html`, full mixes, scored against e
 
 - **The beat clock** locks onto the tempo and predicts every next beat. 90% of locked beats land on a real drum hit, median timing +5 ms. Tempo exact on 81% of tracks (94% counting double/half time). Hits only ever fire on predicted beats, so a hit can't land off the beat. When the clock isn't sure (breakcore breaks, ambient, talking) it goes loose and hard hits stop.
 - **What fires (2026-11-18):** the pictures hit on every **kick the listener hears**, detected by **KickNet**, a tiny neural detector (`listener/kicknet.py`) trained on your own 31 tracks: the full mix goes in, and the answers come from each track's separated drum stem (kicks only), so vocals, bass, arps and pads don't count. How hard a hit lands follows KickNet's confidence (your idea): sure kicks punch, borderline ones only nudge. Each hit is stamped with the moment you will hear it: on the K3s (250 ms Bluetooth delay) it lands on time; on laptop speakers it fires ~30 ms after the sound.
-- **How it was checked:** each song scored by a model that never saw it, against the kick labels you checked by ear: hits with no kick under them went from 65 a minute (the old rules) to 9.5; kick accuracy F 0.54 → 0.83. Your Dark Arm taps (human): 96% of hits land on a tap, 96% of taps get a hit. All your songs are trance/EDM-ish, so other genres are untested; to go back to the old rules set `nn=0` in `listener/detect.py`.
+- **How it was checked:** each song scored by a model that never saw it, against the kick labels you checked by ear: hits with no kick under them went from 65 a minute (the old rules) to about 12; kick accuracy F 0.54 → 0.83. Your Dark Arm taps (human): 96% of hits land on a tap, 96% of taps get a hit. All your songs are trance/EDM-ish, so other genres are untested; to go back to the old rules set `nn=0` in `listener/detect.py`.
 - **Drops:** the wall shatters (the next wall is loaded ahead, so the break is instant and smooth) only on a jump of at least 8 dB in loudness and bass after a quieter stretch, then waits 30 s. It catches about a quarter of labelled drops plus other big "drums in" moments, and misses rather than faking.
 - **Kick/snare labels are not used to trigger anything:** in a full mix they were right only 70% (kicks) / 28% (snares) of the time, which is exactly the phantom-hit problem you worried about.
 - **New track (from Spotify's now-playing via Lively):** the wall rebuilds from pins whose colours match the album cover; accents take the cover's colours pushed to neon; the title is stamped in big, then shrinks to a small strip.
@@ -54,9 +54,9 @@ Measured on 31 of your tracks (`bench/report.html`, full mixes, scored against e
 4. **The network.** A small MLP (normalised input → 128 → 64 → output, ~0.15 ms per frame) answers: *"was
    there a kick attack 3 frames (30 ms) ago?"* as a confidence from 0 to 1. Looking back 30 ms lets it see the
    start of the kick's tail before deciding.
-5. **Trigger.** Fire when the confidence is ≥ 0.5 and still rising; at most one hit per 90 ms. After 1.5 s
-   with no hit, the next one needs 0.8 (lone hits in breakdowns were most of the false ones). The hit is
-   stamped at the attack, 30 ms before the decision; the decision comes ~30 ms after the kick.
+5. **Trigger.** Fire when the confidence is ≥ 0.5 and still rising; at most one hit per 90 ms. The hit is
+   stamped at the attack, 30 ms before the decision; the decision comes ~30 ms after the kick. (A stricter
+   "first hit after a pause needs 0.8" rule was tried and dropped: it held back the first kicks of drops.)
 6. **Send** (websocket `ws://127.0.0.1:4360`). Each hit becomes `{hit, at, z}`: `at` is the moment you will
    *hear* it (when the sound left Windows + ~15 ms output buffer + the speaker delay), `z` the confidence.
 7. **Wallpaper** (`wallpaper/src/audio.js` → `main.js`).
@@ -97,7 +97,7 @@ Measured on 31 of your tracks (`bench/report.html`, full mixes, scored against e
   over ~700k frames.
 - **Testing.** The songs are split into 5 groups and each song is scored by a model that never saw it
   (Adrenaline is never trained on). The live model is then trained on all 30 songs. Results against the kick
-  labels you checked: kick F 0.83 (old rules 0.54), hits with no kick under them 9.5 per minute (old rules 65);
+  labels you checked: kick F 0.83 (old rules 0.54), hits with no kick under them about 12 per minute (old rules 65);
   your Dark Arm taps 96% / 96%.
 
 ### Why it beats the old rules

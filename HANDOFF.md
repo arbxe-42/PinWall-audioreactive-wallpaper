@@ -63,8 +63,10 @@ publish without their explicit yes.**
      kicks are snares too ... train kicknet to just get the kicks"); the snare head is untrained and off
      (`nn_snare=2.0`). Trained with `bench/kn_train.py --kick-only`.
    - fires when the kick activation crosses 0.5 while rising (`nn_kick`), at most one hit per 90 ms;
-     after 1.5 s without a hit the next needs 0.8 (`nn_idle`, `nn_idle_thr`: lone hits in breakdowns
-     were most of the remaining false ones); stamped at the attack (frame - 3); event type `kick_fast`
+     stamped at the attack (frame - 3); event type `kick_fast`. The quiet-stretch guard (`nn_idle_thr`:
+     after 1.5 s without a hit the next needs 0.8) is OFF since the user said hits sometimes "don't even
+     start on the drop": with it, the first hit after a pause came > 4 s late after 13 of 75 pauses (6 of
+     75 without it); it bought only 3 points of precision (0.88 -> 0.85)
    - the hit's confidence `z` scales how hard it hits (`audio.js` `_hit`: relative to the last 12 s of
      hits, reference floored at 0.75, reset on silence; 0.12..1, the user's idea): sure kicks punch,
      borderline ones (arp notes) only nudge. KickNet hits are NOT damped when off the beat-clock grid:
@@ -130,7 +132,8 @@ publish without their explicit yes.**
   | old rules (`nn=0`) | 0.48 / 0.63 / 0.54 | 65 /min | 0.92 / 0.91 |
   | KickNet v1 (kick+snare, old labels) | 0.52 / 0.77 / 0.62 | 68 /min | 0.76 / 0.97 |
   | KickNet v6 (kick+snare) | 0.66 / 0.80 / 0.72 | 39 /min | 0.92 / 0.97 |
-  | **KickNet v7 kick-only (live)** | **0.88 / 0.77 / 0.83** | **9.5 /min** | **0.96 / 0.96** |
+  | **KickNet v7 kick-only (live, no quiet guard)** | **0.85 / 0.80 / 0.83** | **~12 /min** | **0.96 / 0.96** |
+  | (v7 with the 0.8 quiet guard, live 02:09-02:40) | 0.88 / 0.77 / 0.83 | 9.5 /min | 0.96 / 0.96 |
   Full chain on Adrenaline (`tools/e2e_hand.py`): 88% of hits on the user's marked kicks, timing -1 ms.
   Worst tracks for v7 (hits on no kick): Glass Ocean (20) 28/min, 47, 45, 39.
   Caveat (the user's): every song is from their own taste (trance/EDM-ish); held-out scores say nothing
