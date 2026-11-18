@@ -35,6 +35,81 @@ Measured on 31 of your tracks (`bench/report.html`, full mixes, scored against e
 - **Kick/snare labels are not used to trigger anything:** in a full mix they were right only 70% (kicks) / 28% (snares) of the time, which is exactly the phantom-hit problem you worried about.
 - **New track (from Spotify's now-playing via Lively):** the wall rebuilds from pins whose colours match the album cover; accents take the cover's colours pushed to neon; the title is stamped in big, then shrinks to a small strip.
 
+## The full algorithm
+
+### Live: from your speakers to the wall
+
+1. **Capture** (`listener/server.py`). The listener records what Windows plays (WASAPI loopback, 48 kHz,
+   mixed to mono) in 10 ms blocks. It knows the output device and its delay (K3 Bluetooth 250 ms, laptop
+   speakers 0) and re-checks the device every 2 s.
+2. **A spectrum every 10 ms** (`listener/detect.py`). The last 2048 samples (~43 ms) get a Hann window and an
+   FFT: 1025 frequency magnitudes, a snapshot of the sound right now.
+3. **KickNet features** (`listener/kicknet.py`). The spectrum is folded into 40 log-spaced bands from 40 Hz to
+   14 kHz (fine detail in the bass, coarse up high). Each band gives three numbers:
+   - **level**: its loudness in dB relative to a running peak of the whole mix (the peak falls 3 dB per
+     second, so the volume knob doesn't matter);
+   - **change over 10 ms** and **change over 20 ms**: how fast the band is jumping (what an attack looks like).
+
+   The last 12 frames (120 ms) are kept: 40 × 3 × 12 = 1440 numbers.
+4. **The network.** A small MLP (normalised input → 128 → 64 → output, ~0.15 ms per frame) answers: *"was
+   there a kick attack 3 frames (30 ms) ago?"* as a confidence from 0 to 1. Looking back 30 ms lets it see the
+   start of the kick's tail before deciding.
+5. **Trigger.** Fire when the confidence is ≥ 0.5 and still rising; at most one hit per 90 ms. After 1.5 s
+   with no hit, the next one needs 0.8 (lone hits in breakdowns were most of the false ones). The hit is
+   stamped at the attack, 30 ms before the decision; the decision comes ~30 ms after the kick.
+6. **Send** (websocket `ws://127.0.0.1:4360`). Each hit becomes `{hit, at, z}`: `at` is the moment you will
+   *hear* it (when the sound left Windows + ~15 ms output buffer + the speaker delay), `z` the confidence.
+7. **Wallpaper** (`wallpaper/src/audio.js` → `main.js`).
+   - Timing: the hit is scheduled for `at − 45 ms` so the visual peak lands on the sound. On the K3s there is
+     250 ms of slack (exactly on time); on laptop speakers that moment has passed, so it fires at once (~30 ms
+     late).
+   - Strength: the confidence is compared with the song's last 200 hits:
+     `rel = (z − 0.5) / (that song's 80th percentile − 0.5)`, `strength = 0.12 + 0.88 × rel^1.5`. Sure kicks hit
+     full, borderline ones (an arp note that slips through) only nudge. Strength drives the punch-zoom, shake,
+     picture bounce, RGB split and flash; only confident hits step the sunburst rays or trigger a glitch.
+
+**Alongside the hits:**
+- **Beat clock**: tempo from autocorrelation of the last 6 s of onsets, phase by comb search, then a
+  phase-locked loop that predicts every next beat. It drives the bar count, picture swaps, the clock HUD and
+  the barcode, not the hits.
+- **Drops**: a jump of at least 8 dB in loudness and bass after a quieter stretch → the wall shatters, then
+  waits 30 s before another can. The next wall is built and its pictures loaded ahead of time, so the break is
+  instant and stays at 60 fps.
+
+### How KickNet was made (offline, `bench/`)
+
+- **Data.** Your 31 full tracks went through demucs (`bench/make_full_stems.py`), which separates the drum
+  stem. The model's input is the **full mix**; its answers come only from the **drum stem**. Vocals, bass and
+  arps are in what it hears but never in the answers, so it learns to ignore them.
+- **Kick labels from the drum stem** (`bench/stem_labels.py`, tuned with your ears in Kick Check). A kick is:
+  1. a loud, fast low-end attack: 30-150 Hz rises 15 dB within 40 ms, to within 14 dB of the track's real kicks;
+  2. with the track's own click: the 2-10 kHz part at the attack is like the track's typical kick, in level and
+     in how sharply it rises (kills bass/lead bleed and clickless thumps; relative per track, so soft-kick
+     tracks keep their kicks);
+  3. not a pure sub note: if 110-250 Hz sits more than 12 dB under the 30-70 Hz sub, it's a bass or arp note
+     (the 825 hp case);
+  4. one kick, not two: attacks within 70 ms are one layered kick (the neurotransmission case); 70-100 ms apart
+     only count twice if the low end dips 12 dB between them;
+  5. big hits near the stem's loudest also count, when the low end carries them.
+- **Training** (`bench/kn_train.py --kick-only`). Each kick becomes a 1 at its attack frame + 3 (soft 0.3 / 0.6
+  on the neighbouring frames), everything else 0. Loss: cross-entropy with kicks weighted ×4 (they're rare).
+  Augmentation: random gain and EQ tilt of ±6 dB, so it can't lean on loudness or tone colour. AdamW, 6 passes
+  over ~700k frames.
+- **Testing.** The songs are split into 5 groups and each song is scored by a model that never saw it
+  (Adrenaline is never trained on). The live model is then trained on all 30 songs. Results against the kick
+  labels you checked: kick F 0.83 (old rules 0.54), hits with no kick under them 9.5 per minute (old rules 65);
+  your Dark Arm taps 96% / 96%.
+
+### Why it beats the old rules
+
+The old trigger asked one question: *"did the bass band jump?"* Sidechain swells, bass notes, vocals with low
+end and sub arps all answer yes. KickNet sees all 40 bands over 120 ms at once (the broadband click, the shape
+of the low-end rise, what comes right after) and learned the kick's whole fingerprint from your own songs. The
+biggest single win wasn't the network, though: it was getting the labels right with your ears (the first
+version learned from labels that put kicks under hi-hats).
+
+To go back to the old rules: set `nn=0` in `listener/detect.py` and restart the listener.
+
 ## Kick Check (checking the labels by ear)
 
 `tools/annotate/server.py` (or "kick-check" in the app's preview list) opens http://127.0.0.1:4353: play any of your
