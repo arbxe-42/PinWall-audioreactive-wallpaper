@@ -212,15 +212,22 @@ music.on('hit', h => {
     // base amounts included (they used to fire at a fixed minimum on every hit, so "no kick" was never 0).
     // Full strength gives what a full hit always gave. Not damped off the beat-clock grid (after a drop the
     // clock needs 10-30 s to re-lock); downbeat accents only when the clock is locked and agrees.
+    // Two feels, crossfaded by h.settle (0 for the first 10 s of a drop/section, 1 after 25 s):
+    //  start  : strength from the 30 s curve, every effect proportional (strong from the first kick)
+    //  settled: the 200-hit version the user preferred once a drop runs (beat-grid accents, base motion)
+    const w = h.settle || 0;
     const a = h.strength;
-    S.fx.punch = Math.max(S.fx.punch, (0.038 + (h.down ? 0.014 : 0)) * a * I);
-    S.fx.pulse = Math.max(S.fx.pulse, a);
-    S.fx.bounce = Math.max(S.fx.bounce, Math.min(1.4, (1.1 + (h.down ? 0.3 : 0)) * a) * I);
-    S.fx.beatGlow = Math.max(S.fx.beatGlow || 0, a);
-    if (a > 0.3) S.rayTarget = (S.rayTarget || 0) + (h.down ? 2 : 1) / 30;   // the sunburst steps one ray per confident kick
-    S.fx.split = Math.max(S.fx.split, (h.down ? 8.5 : 4.5) * a * I);
-    if (h.down) S.fx.flash = Math.max(S.fx.flash, (0.1 + 0.08 * a) * a);
-    if (!h.beat && a > 0.35 && Math.random() < 0.35) { S.fx.glitch = Math.max(S.fx.glitch, 0.25 * I); S.fx.gseed = Math.random() * 100; }
+    const ao = Math.max(0.12, h.strengthOld != null ? h.strengthOld : a) * (h.beat ? 1 : 0.75);
+    const mix = (n, o) => n * (1 - w) + o * w;
+    S.fx.punch = Math.max(S.fx.punch, mix((0.038 + (h.down ? 0.014 : 0)) * a, 0.012 + 0.026 * ao + (h.down ? 0.014 : 0)) * I);
+    S.fx.pulse = Math.max(S.fx.pulse, mix(a, 1));
+    S.fx.bounce = Math.max(S.fx.bounce, mix(Math.min(1.4, (1.1 + (h.down ? 0.3 : 0)) * a), Math.min(1.4, 0.5 + 0.6 * ao + (h.down ? 0.3 : 0))) * I);
+    S.fx.beatGlow = Math.max(S.fx.beatGlow || 0, mix(a, 1));
+    const am = mix(a, ao);
+    if (am > 0.3) S.rayTarget = (S.rayTarget || 0) + (h.down ? 2 : 1) / 30;   // the sunburst steps one ray per confident kick
+    S.fx.split = Math.max(S.fx.split, mix((h.down ? 8.5 : 4.5) * a, 1.5 + (h.down ? 7 : 3) * ao) * I);
+    if (h.down) S.fx.flash = Math.max(S.fx.flash, mix((0.1 + 0.08 * a) * a, 0.1 + 0.08 * ao));
+    if (!h.beat && am > 0.35 && Math.random() < 0.35) { S.fx.glitch = Math.max(S.fx.glitch, 0.25 * I); S.fx.gseed = Math.random() * 100; }
     return;
   }
   // the older flux-trigger hits (nn=0): a 0.4 floor and off-beat damping

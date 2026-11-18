@@ -16,6 +16,7 @@ export class Music {
     this.lastBeatAt = 0;
     this.handlers = { beat: [], hit: [], drop: [], mode: [], device: [] };
     this.zs = [];
+    this.zsOld = [];   // trigger confidences of the last 200 hits (the "settled" strength, see _hit)
     this.liveMax = [1e-3, 1e-3, 1e-3];
     this.device = '';
     this._connect();
@@ -64,6 +65,7 @@ export class Music {
   }
 
   _drop(m) {
+    this.sectionStart = m.at;   // a drop starts a new section: the wall uses the start-of-drop strength again
     const wait = Math.max(0, m.at - Date.now());
     setTimeout(() => this.emit('drop', m), wait);
   }
@@ -126,6 +128,19 @@ export class Music {
       const p80 = sorted[Math.floor(sorted.length * 0.8)] || m.z || 1;
       strength = Math.min(1, m.z / p80);
     }
+    // The "settled" feel the user preferred once a drop is ~20 s in: the 200-hit version, exactly as it was
+    // (trigger confidence z0 against the 80th percentile of the last 200 hits, ^1.5, floor 0.12; main.js adds
+    // its beat-grid accents and base motion). The new curve above is better at the START of a drop (strong
+    // from the first kick), so main.js crossfades: new only for the first 10 s of a section (after >= 3 s
+    // without hits, or a drop), then over 15 s to the old one.
+    const z0 = m.z0 != null ? m.z0 : m.z;
+    this.zsOld.push(z0); if (this.zsOld.length > 200) this.zsOld.shift();
+    const so = [...this.zsOld].sort((a, b) => a - b);
+    const p80o = so[Math.floor(so.length * 0.8)] || z0 || 1;
+    const strengthOld = 0.12 + 0.88 * Math.pow(Math.max(0, Math.min(1, (z0 - 0.5) / Math.max(0.05, p80o - 0.5))), 1.5);
+    if (now - (this.lastMsgAt || 0) > 3000) this.sectionStart = now;
+    this.lastMsgAt = now;
+    const settle = Math.max(0, Math.min(1, (now - (this.sectionStart || now) - 10000) / 15000));
     const c = this.clock;
     let beat = false, down = false;
     if (c && c.locked) {
@@ -136,7 +151,7 @@ export class Music {
         down = ((c.pos + k) % 4 + 4) % 4 === c.down;
       }
     }
-    const fire = () => { this.lastHitAt = Date.now(); this.emit('hit', { strength, soft, beat, down, period: c ? c.period : 500 }); };
+    const fire = () => { this.lastHitAt = Date.now(); this.emit('hit', { strength, strengthOld, settle, soft, beat, down, period: c ? c.period : 500 }); };
     const wait = m.at - LEAD - Date.now();
     wait > 0 ? setTimeout(fire, wait) : fire();
   }

@@ -148,7 +148,7 @@ class Analyzer:
             elif e["type"] == "kick_fast" and self.st.mode == "reactive":
                 # a kick was heard in the audio Windows is sending out: tell the wallpaper when YOU will hear it
                 at = self.offset + e["t"] + heard
-                self.st.send({"type": "hit", "at": round(at * 1000, 1), "z": e.get("z", 0)})
+                self.st.send({"type": "hit", "at": round(at * 1000, 1), "z": e.get("z", 0), "z0": e.get("z0", e.get("z", 0))})
             elif e["type"] in ("lock", "loose", "flip"):
                 log(e["type"], "bpm", None if d.P is None else round(60 * FPS / d.P, 1))
         # clock: the next predicted beat, in heard wall time

@@ -256,7 +256,8 @@ class Detector:
             self.nn_last = n
             lag = self.nn.net.lag
             hit = {"type": "kick_fast", "t": (n - lag + 1) * self.hop / self.sr, "emit": (n + 1) * self.hop / self.sr,
-                   "z": round(conf, 2), "nn": [round(k, 2), round(sn, 2)], "_send": n + int(self.p["nn_peak"])}
+                   "z": round(conf, 2), "z0": round(conf, 2), "nn": [round(k, 2), round(sn, 2)],
+                   "_send": n + int(self.p["nn_peak"])}   # z becomes the peak; z0 stays the trigger value
             if self.p["nn_peak"] <= 0:
                 hit.pop("_send"); out.append(hit)
             else:

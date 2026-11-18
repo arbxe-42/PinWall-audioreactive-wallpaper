@@ -11,7 +11,7 @@ const fired = [];
 const hits = [];
 const clocks = [];
 m.on('beat', b => fired.push({ t: Date.now() + LEAD, pos: b.pos, down: b.down, bpm: b.bpm }));
-m.on('hit', h => hits.push({ t: Date.now() + LEAD, slot: h.slot, beat: h.beat }));
+m.on('hit', h => hits.push({ t: Date.now() + LEAD, slot: h.slot, beat: h.beat, s: h.strength, so: h.strengthOld, w: h.settle }));
 const origClock = m._clock.bind(m);
 m._clock = msg => { clocks.push({ t: Date.now(), next: msg.next, period: msg.period, locked: msg.locked }); origClock(msg); };
 

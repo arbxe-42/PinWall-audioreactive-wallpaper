@@ -80,6 +80,13 @@ publish without their explicit yes.**
      absolute 0.6-0.75 ramp, a guarded 20 s ramp (1.00 / 0.53: real kicks great, too little contrast).
      KickNet hits are not damped off the beat-clock grid; downbeat accents only when the clock agrees.
      On wired/laptop speakers hits show ~50 ms after the sound.
+   - **Crossfade to the "settled" feel (03:20):** the user found the 30 s curve better at the START of a
+     drop but the old 200-hit version better once a drop runs (~20 s in). So `audio.js` computes both
+     (old = trigger confidence `z0` vs the 80th percentile of the last 200 hits, ^1.5, floor 0.12, plus
+     main.js's old beat-grid damping/accents and base motion) and `settle` = 0 for the first 10 s of a
+     section (after >= 3 s without hits, or a drop), ramping to 1 by 25 s; main.js mixes every effect.
+     The listener sends `z0` (trigger) next to `z` (20 ms peak). If the user prefers one feel outright,
+     pin `settle` to 0 or 1 in `audio.js`.
    - the old rule trigger (low-band flux + rise + 180 ms hold + loudness gate) is still in
      `detect.py` behind `nn=0` (also the fallback if `kicknet.npz` is missing)
    - `server.py` sends `{type: 'hit', at: <epoch ms when YOU will hear it>}`; `audio.js` `_hit()`
