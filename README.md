@@ -110,6 +110,13 @@ version learned from labels that put kicks under hi-hats).
 
 To go back to the old rules: set `nn=0` in `listener/detect.py` and restart the listener.
 
+### KickNet on its own
+
+KickNet is also a standalone download: the `kicknet/` folder (or `KickNet.zip` from the repo's Releases page).
+numpy only. `python -m kicknet song.wav` lists every kick, `python -m kicknet --live` shows kicks in whatever the
+PC plays, and `from kicknet import KickDetector` streams it in your own code. See `kicknet/README.md`. After
+retraining, `tools/build_kicknet.py` syncs it from the listener and rebuilds the zip.
+
 ## Kick Check (checking the labels by ear)
 
 `tools/annotate/server.py` (or "kick-check" in the app's preview list) opens http://127.0.0.1:4353: play any of your

@@ -1,0 +1,5 @@
+numpy>=1.26
+# optional: other audio formats than WAV
+# soundfile>=0.12
+# optional: --live (listen to what the PC plays)
+# soundcard>=0.4.3
