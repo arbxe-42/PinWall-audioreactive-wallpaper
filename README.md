@@ -29,7 +29,7 @@ never publish the wallpaper or its screenshots.
 Measured on 31 of your tracks (`bench/report.html`, full mixes, scored against each track's isolated drum stem):
 
 - **The beat clock** locks onto the tempo and predicts every next beat. 90% of locked beats land on a real drum hit, median timing +5 ms. Tempo exact on 81% of tracks (94% counting double/half time). Hits only ever fire on predicted beats, so a hit can't land off the beat. When the clock isn't sure (breakcore breaks, ambient, talking) it goes loose and hard hits stop.
-- **What fires (2026-11-18):** the pictures hit on every **kick the listener hears**, detected by **KickNet**, a tiny neural detector (`listener/kicknet.py`) trained on your own 31 tracks: the full mix goes in, and the answers come from each track's separated drum stem (kicks only), so vocals, bass, arps and pads don't count. How hard a hit lands follows KickNet's confidence (your idea): sure kicks punch, borderline ones only nudge. Each hit is stamped with the moment you will hear it: on the K3s (250 ms Bluetooth delay) it lands on time; on laptop speakers it fires ~30 ms after the sound.
+- **What fires (2026-11-18):** the pictures hit on every **kick the listener hears**, detected by **KickNet**, a tiny neural detector (`listener/kicknet.py`) trained on your own 31 tracks: the full mix goes in, and the answers come from each track's separated drum stem (kicks only), so vocals, bass, arps and pads don't count. How hard a hit lands follows KickNet's confidence (your idea): sure kicks punch, borderline ones only nudge. Each hit is stamped with the moment you will hear it: on the K3s (250 ms Bluetooth delay) it lands on time; on laptop speakers it fires ~50 ms after the sound.
 - **How it was checked:** each song scored by a model that never saw it, against the kick labels you checked by ear: hits with no kick under them went from 65 a minute (the old rules) to about 12; kick accuracy F 0.54 → 0.83. Your Dark Arm taps (human): 96% of hits land on a tap, 96% of taps get a hit. All your songs are trance/EDM-ish, so other genres are untested; to go back to the old rules set `nn=0` in `listener/detect.py`.
 - **Drops:** the wall shatters (the next wall is loaded ahead, so the break is instant and smooth) only on a jump of at least 8 dB in loudness and bass after a quieter stretch, then waits 30 s. It catches about a quarter of labelled drops plus other big "drums in" moments, and misses rather than faking.
 - **Kick/snare labels are not used to trigger anything:** in a full mix they were right only 70% (kicks) / 28% (snares) of the time, which is exactly the phantom-hit problem you worried about.
@@ -61,12 +61,12 @@ Measured on 31 of your tracks (`bench/report.html`, full mixes, scored against e
    *hear* it (when the sound left Windows + ~15 ms output buffer + the speaker delay), `z` the confidence.
 7. **Wallpaper** (`wallpaper/src/audio.js` → `main.js`).
    - Timing: the hit is scheduled for `at − 45 ms` so the visual peak lands on the sound. On the K3s there is
-     250 ms of slack (exactly on time); on laptop speakers that moment has passed, so it fires at once (~30 ms
+     250 ms of slack (exactly on time); on laptop speakers that moment has passed, so it fires at once (~50 ms
      late).
-   - Strength: the confidence is compared with the song's last 200 hits:
-     `rel = (z − 0.5) / (that song's 80th percentile − 0.5)`, `strength = 0.12 + 0.88 × rel^1.5`. Sure kicks hit
-     full, borderline ones (an arp note that slips through) only nudge. Strength drives the punch-zoom, shake,
-     picture bounce, RGB split and flash; only confident hits step the sunburst rays or trigger a glitch.
+   - Strength: the listener sends each hit 20 ms after it triggers, with the *peak* confidence over those
+     20 ms (real kicks keep climbing to ~0.82, stray hits stall around 0.66). The wall maps it straight:
+     0.6 or less is a light nudge, 0.75 or more hits full. Strength drives the punch-zoom, shake, picture
+     bounce, RGB split and flash; only confident hits step the sunburst rays or trigger a glitch.
 
 **Alongside the hits:**
 - **Beat clock**: tempo from autocorrelation of the last 6 s of onsets, phase by comb search, then a

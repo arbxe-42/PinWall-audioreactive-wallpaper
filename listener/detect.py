@@ -66,7 +66,7 @@ class Detector:
             rise_db=1.0, snap_ratio=10.0,  # kick candidate checks (see _frame)
             fast_k=5.0, fast_rise=3.0, fast_gap=0.11, fast_hold=0.18, sub_margin=-99.0, sub_big=8.0, gate_db=30.0,   # fast kick trigger
             td_lo_db=6.0, td_hi_db=4.0, td_lo_big=12.0, td_floor_db=14.0,   # time-domain kick trigger
-            nn=1.0, nn_kick=0.5, nn_snare=2.0, nn_gap=0.09, nn_idle=1.5, nn_idle_thr=0.0,   # KickNet trigger (listener/kicknet.py, kicknet.npz); nn=0 = the older rules below
+            nn=1.0, nn_kick=0.5, nn_snare=2.0, nn_gap=0.09, nn_idle=1.5, nn_idle_thr=0.0, nn_peak=2,   # KickNet trigger (listener/kicknet.py, kicknet.npz); nn=0 = the older rules below
             learn_hit=0.4, learn_miss=0.4,
             lock_conf=0.6,       # fraction of recent beats backed by an onset
             bias=0.027,          # reported times minus this = the drum attack (bench-calibrated, 31 clips)
@@ -106,6 +106,7 @@ class Detector:
             except OSError:
                 self.nn = None   # no weights file: fall back to the rules
         self.nn_prev = (0.0, 0.0)
+        self.nn_pending = None
         self.nn_last = -10 ** 9
 
         self.pk_kick = Peaks(p["kick_k"], p["kick_floor"], refractory=9)
@@ -225,12 +226,26 @@ class Detector:
 
     def _nn_frame(self, n, spec):
         """KickNet trigger: fire when the kick (or, at a higher bar, snare) activation crosses its threshold
-        while rising. The network answers for the attack `lag` frames ago, so the hit is stamped there."""
+        while rising. The network answers for the attack `lag` frames ago, so the hit is stamped there.
+        The hit is sent nn_peak frames later with the PEAK confidence over those frames: at the crossing,
+        real kicks and stray hits look alike (median 0.69 vs 0.61); 20 ms later real kicks have climbed
+        (0.82) and strays stall (0.66), so the wallpaper can hit real kicks hard and strays softly. The
+        timestamp stays on the attack (with Bluetooth delay the wait is invisible; on wired speakers +20 ms)."""
         k, sn = self.nn.push(spec)
         pk, ps = self.nn_prev
         self.nn_prev = (k, sn)
+        out = []
+        conf = k if self.p["nn_snare"] > 1 else max(k, sn)   # kick-only model (nn_snare > 1): kick head only
+        if self.nn_pending is not None:
+            hit = self.nn_pending
+            hit["z"] = max(hit["z"], round(conf, 2))
+            if n >= hit["_send"]:
+                hit.pop("_send")
+                hit["emit"] = (n + 1) * self.hop / self.sr
+                out.append(hit)
+                self.nn_pending = None
         if n - self.nn_last < self.p["nn_gap"] * FPS:
-            return []
+            return out
         # optional: after a quiet stretch (no hit for nn_idle s) the first hit must reach nn_idle_thr. OFF
         # (0.0) since 2026-11-18: with the kick-only model it blocked drop starts (first hit > 4 s late after
         # 13 of 75 pauses; drop kicks often sit at 0.6-0.75 confidence). Weak stray hits are soft anyway.
@@ -240,10 +255,13 @@ class Detector:
         if (k >= tk and k >= pk) or (sn >= ts and sn >= ps):
             self.nn_last = n
             lag = self.nn.net.lag
-            return [{"type": "kick_fast", "t": (n - lag + 1) * self.hop / self.sr, "emit": (n + 1) * self.hop / self.sr,
-                     # z = confidence (the wallpaper scales the hit by it); kick-only model (nn_snare > 1): kick head only
-                     "z": round(k if self.p["nn_snare"] > 1 else max(k, sn), 2), "nn": [round(k, 2), round(sn, 2)]}]
-        return []
+            hit = {"type": "kick_fast", "t": (n - lag + 1) * self.hop / self.sr, "emit": (n + 1) * self.hop / self.sr,
+                   "z": round(conf, 2), "nn": [round(k, 2), round(sn, 2)], "_send": n + int(self.p["nn_peak"])}
+            if self.p["nn_peak"] <= 0:
+                hit.pop("_send"); out.append(hit)
+            else:
+                self.nn_pending = hit
+        return out
 
     def t(self, frame):
         """Seconds of the sound for an analysis frame (frame end minus calibrated bias)."""

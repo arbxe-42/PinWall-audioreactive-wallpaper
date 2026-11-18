@@ -67,14 +67,13 @@ publish without their explicit yes.**
      after 1.5 s without a hit the next needs 0.8) is OFF since the user said hits sometimes "don't even
      start on the drop": with it, the first hit after a pause came > 4 s late after 13 of 75 pauses (6 of
      75 without it); it bought only 3 points of precision (0.88 -> 0.85)
-   - the hit's confidence `z` scales how hard it hits (`audio.js` `_hit`: relative to the last 12 s of
-     hits, reference floored at 0.75, reset on silence; 0.12..1, the user's idea): sure kicks punch,
-     borderline ones (arp notes) only nudge. KickNet hits are NOT damped when off the beat-clock grid:
-     the user noticed hits "need a minute after drops"; the clock needs 10-30 s to re-lock after a change
-     (sometimes sits on the wrong grid for a minute, e.g. Tek Genesis) and the old 200-hit window took ~1 min
-   - trained from the FULL MIX with labels from demucs drum stems of all 31 full tracks
-     (`bench/stem_labels.py` v7, see below). Bass and vocals are in the input, never in the labels,
-     which is what cut the "follows the vocals" hits. Adrenaline (14) is never trained on.
+   - the hit is sent 20 ms after it triggers (`nn_peak=2` frames) carrying the PEAK confidence over those
+     frames; its timestamp stays on the attack. At the crossing real kicks and strays look alike (median
+     0.69 vs 0.61); at the peak real kicks reach 0.82 and strays 0.66. `audio.js` maps it absolutely:
+     0.6 or less -> 0.12 (a nudge), 0.75 or more -> full (the user: "when it knows it is mostly right,
+     send it harder"). Result over 30 songs: real kicks median full strength, 76% >= 0.8; strays median
+     0.46. No per-song warm-up. KickNet hits are not damped off the beat-clock grid (the clock needs
+     10-30 s to re-lock after changes). On wired/laptop speakers hits now show ~50 ms after the sound.
    - the old rule trigger (low-band flux + rise + 180 ms hold + loudness gate) is still in
      `detect.py` behind `nn=0` (also the fallback if `kicknet.npz` is missing)
    - `server.py` sends `{type: 'hit', at: <epoch ms when YOU will hear it>}`; `audio.js` `_hit()`

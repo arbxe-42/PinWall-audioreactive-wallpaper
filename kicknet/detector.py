@@ -16,11 +16,13 @@ from .kicknet import Net, Stream, WEIGHTS
 
 class KickDetector:
     def __init__(self, sample_rate, weights=WEIGHTS, threshold=0.5, min_gap=0.09, idle=1.5, idle_threshold=0.0,
-                 nfft=2048):
+                 peak_frames=2, nfft=2048):
         """
         threshold       fire when the kick confidence reaches this while still rising (live: 0.5)
         min_gap         at most one kick per this many seconds (live: 0.09)
         idle            after this many seconds without a kick ...
+        peak_frames     a kick is reported this many 10 ms frames after it triggers, with the PEAK confidence over
+                        them (real kicks keep climbing, stray hits stall: much better separated). 0 = report at once
         idle_threshold  ... the next one needs this confidence. Off by default (0.0): 0.8 cut lone false hits
                         in breakdowns but also blocked the first kicks of drops (they often sit at 0.6-0.75).
         """
@@ -34,9 +36,11 @@ class KickDetector:
         self.net = Net(weights)
         self.stream = Stream(sample_rate, nfft, self.net)
         self.threshold, self.min_gap, self.idle, self.idle_threshold = threshold, min_gap, idle, idle_threshold
+        self.peak_frames = peak_frames
         self.n = 0
         self.prev = 0.0
         self.last = -10 ** 9
+        self.hit_wait = None
 
     def process(self, block):
         """Feed mono float samples (-1..1). Returns a list of {"time", "confidence"} for kicks confirmed so far."""
@@ -57,14 +61,26 @@ class KickDetector:
         spec = np.abs(np.fft.rfft(self.buf * self.win)) / self.wsum
         k, _ = self.stream.push(spec)
         prev, self.prev = self.prev, k
+        out = []
+        if self.hit_wait is not None:
+            self.hit_wait["confidence"] = max(self.hit_wait["confidence"], round(float(k), 3))
+            if n >= self.hit_wait["_due"]:
+                self.hit_wait.pop("_due")
+                out.append(self.hit_wait)
+                self.hit_wait = None
         if (n - self.last) * self.hop / self.sr < self.min_gap:
-            return []
+            return out
         quiet = (n - self.last) * self.hop / self.sr > self.idle
         thr = max(self.threshold, self.idle_threshold) if quiet else self.threshold
         if k >= thr and k >= prev:
             self.last = n
-            return [{"time": (n - self.net.lag + 1) * self.hop / self.sr, "confidence": round(float(k), 3)}]
-        return []
+            hit = {"time": (n - self.net.lag + 1) * self.hop / self.sr, "confidence": round(float(k), 3)}
+            if self.peak_frames <= 0:
+                out.append(hit)
+            else:
+                hit["_due"] = n + self.peak_frames
+                self.hit_wait = hit
+        return out
 
 
 def detect_file(path, **kw):

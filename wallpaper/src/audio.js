@@ -110,13 +110,12 @@ export class Music {
     while (this.zs.length && now - this.zs[0][0] > 12000) this.zs.shift();
     const sorted = this.zs.map(v => v[1]).sort((a, b) => a - b);
     let p80 = sorted[Math.floor(sorted.length * 0.8)] || m.z || 1;
-    if (m.z <= 1) p80 = Math.max(0.75, p80);   // a clear KickNet kick (>= 0.75) always hits full, even the first
     let strength, soft = false;
     if (m.z <= 1) {
-      // KickNet confidence (0.5 = just over the trigger, 1 = certain), relative to this song's recent hits:
-      // sure kicks hit full, borderline ones (arp notes, stray melody) only nudge (the user's idea, 2026-11-18)
-      const rel = Math.max(0, Math.min(1, (m.z - 0.5) / Math.max(0.05, p80 - 0.5)));
-      strength = 0.12 + 0.88 * Math.pow(rel, 1.5);
+      // KickNet: z is the confidence PEAK over the 20 ms after the trigger. Real kicks peak around 0.82, stray
+      // hits around 0.66, so an absolute ramp works for every song from the first kick: 0.6 or less -> a light
+      // nudge (0.12), 0.75 or more -> full (the user: "when it knows it is mostly right, send it harder")
+      strength = 0.12 + 0.88 * Math.max(0, Math.min(1, (m.z - 0.6) / 0.15));
       soft = true;
     } else strength = Math.min(1, m.z / p80);
     const c = this.clock;
