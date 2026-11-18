@@ -33,3 +33,7 @@ test/
 *.ogg
 *.m4a
 *.aac
+
+# demo video work files (recordings hold the sound: never commit them). The finished clip goes on a
+# GitHub release; only the small README loop (docs/demo.gif) is in the repo.
+demo/

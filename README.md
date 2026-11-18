@@ -1,5 +1,12 @@
 # Pin Wall
 
+![Pin Wall reacting to INZO - Overthinker: the KickNet strip underneath marks each kick it hears](docs/demo.gif)
+
+**[Watch the 50 s demo with sound](https://github.com/arbxe-42/pinwall-audioreactive-wallpaper/releases/download/demo-v1/pinwall-demo.mp4)**
+(INZO - Overthinker, then JPEGMAFIA - 1539 N. Calvert). The strip under the wall is KickNet live: the
+waveform scrolls past a playhead, pink marks are kicks it hears (taller = more sure), grey marks are the
+old loudness trigger, red where it fired on no kick at all.
+
 > For agents picking this up: read `HANDOFF.md` first.
 
 Your desktop wallpaper as a living collage of your 255 Pinterest pins ("Sick images" board), cut,
@@ -116,6 +123,21 @@ KickNet is also a standalone download: the `kicknet/` folder (or `KickNet.zip` f
 numpy only. `python -m kicknet song.wav` lists every kick, `python -m kicknet --live` shows kicks in whatever the
 PC plays, and `from kicknet import KickDetector` streams it in your own code. See `kicknet/README.md`. After
 retraining, `tools/build_kicknet.py` syncs it from the listener and rebuilds the zip.
+
+## Demo video
+
+- **Record a clean clip:** `listener/.venv/Scripts/python.exe tools/record_demo.py --seconds 25`, then press
+  play on a song (from a local file you own, never a stream). It switches the wall to Reactive, shows the
+  desktop, hides the icons, waits for the music, records the main monitor (no mouse pointer) and the PC's
+  sound, then puts everything back. Files land in `demo/raw/` (ignored by git: they hold the sound).
+- **Cut it:** `listener/.venv/Scripts/python.exe tools/make_demo.py --raw demo/raw --out demo/clip.mp4 --gif`.
+  It crops off the icon shelf and taskbar, runs KickNet and the old loudness trigger on the sound, lines
+  the sound up with the picture by matching the wall's hits to the kicks (the wall shows hits when you
+  HEAR them, so a Bluetooth delay shows up as an offset), draws the strip and writes a 1920x1080 mp4
+  plus a 6 s GIF. A screen recording of your own works too: put it in a folder as `video.mp4` with its
+  sound as `audio.wav` and a `meta.json` of `{"seconds": <length - 1>}`.
+- The 2026-11-18 demo is two of the user's own screen recordings, cut this way and joined with a 0.6 s
+  crossfade; the full clip is on the `demo-v1` release, the loop in `docs/demo.gif`.
 
 ## Kick Check (checking the labels by ear)
 

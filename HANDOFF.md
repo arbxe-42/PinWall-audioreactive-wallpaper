@@ -249,6 +249,19 @@ sketch/, test/, MORNING.html   original look sketch, stills and captures (contai
   (old 20), none more than 5 times (old 9).
 - The hero now also swaps mid-wall: at bar 16 of every 32 during music, and every other ambient swap.
 
+## Demo video (2026-11-18)
+
+- `tools/record_demo.py` (clean capture: Reactive mode, Win+D, desktop icons hidden, waits for music,
+  ddagrab GPU capture of monitor 0 + soundcard loopback, restores everything) and `tools/make_demo.py`
+  (KickNet + old trigger on the sound, sync by matching frame-to-frame motion to kicks, strip, libx264).
+  NVENC fails on this NVIDIA driver (needs 610+), so both encode with libx264. README "Demo video" has the
+  commands.
+- The published demo: the user's own recordings (INZO - Overthinker first, "looks cooler with purple",
+  then JPEGMAFIA - 1539 N. Calvert), measured sound offsets 385 / 340 ms. Full clip (88 MB) and web clip
+  (21 MB) on the `demo-v1` release; `docs/demo.gif` (6 s loop) at the top of the README. Work files stay
+  in `demo/` (git-ignored; the raw folders hold audio).
+- The songs are copyrighted and the pins are other artists' work: anything public is the user's call.
+
 ## Gotchas learned the hard way
 
 - **Lively pauses** a screen's wallpaper when a maximised or full-screen window covers it (logged as
@@ -278,14 +291,15 @@ sketch/, test/, MORNING.html   original look sketch, stills and captures (contai
    automatic), an ensemble of the 5 fold models (+5x 0.15 ms), a small GRU instead of the MLP.
    The packaged build (`dist/`, `tools/package.py`) must ship `kicknet.py` + `kicknet.npz`
    (weights are learned from the user's music: harmless numbers, but check before publishing).
-1. **Publishing:** a **private** GitHub repo exists since 2026-11-18 (the user asked, pins included):
+1. **Publishing:** the GitHub repo exists since 2026-11-18 (the user asked, pins included):
    https://github.com/arbxe-42/pinwall-audioreactive-wallpaper (the user's PERSONAL account; transferred
    from the work account andres-r-blanco on 2026-11-18, where it was `pin-wall`, then
-   `pinwall-audioreactive-wallpaper`). Pushing needs `gh` logged in as arbxe-42 (`gh auth login`, the
-   user's step). (`git push` from `live-wallpaper/`, HTTPS via `gh`;
+   `pinwall-audioreactive-wallpaper`). `gh` here is logged in as andres-r-blanco, which still has push
+   and release access after the transfer. (`git push` from `live-wallpaper/`, HTTPS via `gh`;
    SSH has no key here). `.gitignore` keeps out the venv, caches, `test/` desktop captures, `dist/` and
-   all audio. Making anything PUBLIC still needs the user's explicit yes, and a public copy must not
-   contain their pins (`dist/PinWall.zip` is the code-only package).
+   all audio. **The repo is PUBLIC, pins included: the user's explicit choice on 2026-11-18 ("keep it public")
+   after being told it holds their 247 pins (other artists' work).** The demo video is on the `demo-v1`
+   release. `dist/PinWall.zip` stays the code-only package for other people.
 2. **Laptop-speaker lag**: now ~30 ms with KickNet (was 50-60 ms). Probably fine; not asked again.
 3. **Laptop-alone icon shelf** is unmeasured (`shelf.json` has no `1536x960` entry). Ask for a
    screenshot.
