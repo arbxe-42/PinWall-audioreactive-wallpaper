@@ -69,13 +69,17 @@ publish without their explicit yes.**
      75 without it); it bought only 3 points of precision (0.88 -> 0.85)
    - the hit is sent 20 ms after it triggers (`nn_peak=2` frames) carrying the PEAK confidence over those
      frames; its timestamp stays on the attack. At the crossing real kicks and strays look alike (median
-     0.69 vs 0.61); at the peak real kicks reach 0.82 and strays 0.66. `audio.js` maps it absolutely:
-     0.6 or less -> 0.12 (a nudge), 0.75 or more -> full (the user: "when it knows it is mostly right,
-     send it harder"). Guarded lift: inside a steady groove (>= 30 hits in the last 20 s) the full point
-     drops to that stretch's median confidence (0.65..0.75), so songs with softer kicks KickNet is less
-     sure of (tracks 40, 13: real kicks 0.42 -> ~0.85) still hit full; sparse sections keep the strict
-     ramp so strays stay light. Over 30 songs: real kicks >= 0.8 strength 80%, strays median 0.52. KickNet hits are not damped off the beat-clock grid (the clock needs
-     10-30 s to re-lock after changes). On wired/laptop speakers hits now show ~50 ms after the sound.
+     0.69 vs 0.61); at the peak real kicks reach 0.82 and strays 0.66.
+   - **Strength (audio.js `_hit`, 2026-11-18 03:08):** full contrast, kick or no kick. The full point is the
+     70th percentile of the last 30 s of hits' peak confidences (clamped 0.7-0.9; 0.8 until 8 hits are in,
+     so a drop is strong from its first kick); 0.2 below it maps to ~0; curve ^1.5, floor 0.05. In
+     main.js every effect of a KickNet hit scales with that strength, base amounts included (they used to
+     fire a fixed minimum on every hit, so "no kick" was never 0). Over 30 songs: real kicks median 0.89,
+     strays 0.16; first 8 s after a pause, real kicks 0.96. History: the 200-hit window (median 0.59 /
+     strays 0.34, ~1 min warm-up: the user liked its contrast once settled but not its first 20 s), an
+     absolute 0.6-0.75 ramp, a guarded 20 s ramp (1.00 / 0.53: real kicks great, too little contrast).
+     KickNet hits are not damped off the beat-clock grid; downbeat accents only when the clock agrees.
+     On wired/laptop speakers hits show ~50 ms after the sound.
    - the old rule trigger (low-band flux + rise + 180 ms hold + loudness gate) is still in
      `detect.py` behind `nn=0` (also the fallback if `kicknet.npz` is missing)
    - `server.py` sends `{type: 'hit', at: <epoch ms when YOU will hear it>}`; `audio.js` `_hit()`

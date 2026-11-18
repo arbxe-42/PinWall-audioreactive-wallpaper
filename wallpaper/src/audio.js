@@ -103,24 +103,24 @@ export class Music {
   // It is scheduled for the moment you hear it; on laptop speakers that moment has usually just passed,
   // so it fires at once (~40 ms late); on Bluetooth speakers there is time to land it exactly.
   _hit(m) {
-    // recent hits: the last 20 s (the old rule trigger scales against them; KickNet only uses them for a
-    // guarded lift, below). It used to be the last 200 hits (~1 minute), which lagged after drops.
+    // recent hits: the last 30 s
     const now = Date.now();
     this.zs.push([now, m.z]);
-    while (this.zs.length && now - this.zs[0][0] > 20000) this.zs.shift();
+    while (this.zs.length && now - this.zs[0][0] > 30000) this.zs.shift();
     const sorted = this.zs.map(v => v[1]).sort((a, b) => a - b);
     let strength, soft = false;
     if (m.z <= 1) {
       // KickNet: z is the confidence PEAK over the 20 ms after the trigger (real kicks ~0.82, strays ~0.66).
-      // Ramp: lo -> a light nudge (0.12), hi -> full (the user: "when it knows it is mostly right, send it
-      // harder"). hi is 0.75, except inside a steady groove (>= 30 hits in the last 20 s), where it drops to
-      // that stretch's median (not below 0.65): songs whose kicks KickNet is less sure of (soft trance kicks)
-      // still hit full, while sparse breakdowns keep the strict ramp so stray hits stay light.
-      // Over 30 songs: real kicks >= 0.8 strength 80% (absolute ramp: 76%), strays median 0.52 (0.46).
-      let hi = 0.75;
-      if (this.zs.length >= 30) hi = Math.min(0.75, Math.max(0.65, sorted[Math.floor(sorted.length / 2)]));
-      const lo = hi - 0.15;
-      strength = 0.12 + 0.88 * Math.max(0, Math.min(1, (m.z - lo) / (hi - lo)));
+      // Full contrast, kick or no kick (the user: the old 200-hit version "would figure things out and have
+      // full dynamics of 0 to 100" after ~30 s of a drop, but the first 20 s were weak). The full point `hi`
+      // is the 70th percentile of the last 30 s of hits (0.7-0.9; 0.8 until 8 hits are in, so a drop is
+      // strong from its first kick); 0.2 below it is ~0; a steep curve keeps strays near zero.
+      // Over 30 songs: real kicks median 0.89, strays 0.16; first 8 s after a pause, real kicks 0.96.
+      // (Before: 200-hit version 0.59 / 0.34 / 0.59; the 20 s guarded ramp 1.00 / 0.53 / 1.00.)
+      let hi = sorted.length >= 8 ? sorted[Math.floor(sorted.length * 0.7)] : 0.8;
+      hi = Math.min(0.9, Math.max(0.7, hi));
+      const lo = hi - 0.2;
+      strength = 0.05 + 0.95 * Math.pow(Math.max(0, Math.min(1, (m.z - lo) / (hi - lo))), 1.5);
       soft = true;
     } else {
       const p80 = sorted[Math.floor(sorted.length * 0.8)] || m.z || 1;
