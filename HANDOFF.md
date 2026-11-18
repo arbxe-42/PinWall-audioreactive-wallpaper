@@ -71,8 +71,10 @@ publish without their explicit yes.**
      frames; its timestamp stays on the attack. At the crossing real kicks and strays look alike (median
      0.69 vs 0.61); at the peak real kicks reach 0.82 and strays 0.66. `audio.js` maps it absolutely:
      0.6 or less -> 0.12 (a nudge), 0.75 or more -> full (the user: "when it knows it is mostly right,
-     send it harder"). Result over 30 songs: real kicks median full strength, 76% >= 0.8; strays median
-     0.46. No per-song warm-up. KickNet hits are not damped off the beat-clock grid (the clock needs
+     send it harder"). Guarded lift: inside a steady groove (>= 30 hits in the last 20 s) the full point
+     drops to that stretch's median confidence (0.65..0.75), so songs with softer kicks KickNet is less
+     sure of (tracks 40, 13: real kicks 0.42 -> ~0.85) still hit full; sparse sections keep the strict
+     ramp so strays stay light. Over 30 songs: real kicks >= 0.8 strength 80%, strays median 0.52. KickNet hits are not damped off the beat-clock grid (the clock needs
      10-30 s to re-lock after changes). On wired/laptop speakers hits now show ~50 ms after the sound.
    - the old rule trigger (low-band flux + rise + 180 ms hold + loudness gate) is still in
      `detect.py` behind `nn=0` (also the fallback if `kicknet.npz` is missing)

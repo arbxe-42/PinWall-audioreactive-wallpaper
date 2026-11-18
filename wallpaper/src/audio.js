@@ -103,21 +103,29 @@ export class Music {
   // It is scheduled for the moment you hear it; on laptop speakers that moment has usually just passed,
   // so it fires at once (~40 ms late); on Bluetooth speakers there is time to land it exactly.
   _hit(m) {
-    // the song's recent hits = the last 12 s (it used to be the last 200 hits, ~1 minute: after a drop or a
-    // new song the wall judged new kicks against the old section for a minute)
+    // recent hits: the last 20 s (the old rule trigger scales against them; KickNet only uses them for a
+    // guarded lift, below). It used to be the last 200 hits (~1 minute), which lagged after drops.
     const now = Date.now();
     this.zs.push([now, m.z]);
-    while (this.zs.length && now - this.zs[0][0] > 12000) this.zs.shift();
+    while (this.zs.length && now - this.zs[0][0] > 20000) this.zs.shift();
     const sorted = this.zs.map(v => v[1]).sort((a, b) => a - b);
-    let p80 = sorted[Math.floor(sorted.length * 0.8)] || m.z || 1;
     let strength, soft = false;
     if (m.z <= 1) {
-      // KickNet: z is the confidence PEAK over the 20 ms after the trigger. Real kicks peak around 0.82, stray
-      // hits around 0.66, so an absolute ramp works for every song from the first kick: 0.6 or less -> a light
-      // nudge (0.12), 0.75 or more -> full (the user: "when it knows it is mostly right, send it harder")
-      strength = 0.12 + 0.88 * Math.max(0, Math.min(1, (m.z - 0.6) / 0.15));
+      // KickNet: z is the confidence PEAK over the 20 ms after the trigger (real kicks ~0.82, strays ~0.66).
+      // Ramp: lo -> a light nudge (0.12), hi -> full (the user: "when it knows it is mostly right, send it
+      // harder"). hi is 0.75, except inside a steady groove (>= 30 hits in the last 20 s), where it drops to
+      // that stretch's median (not below 0.65): songs whose kicks KickNet is less sure of (soft trance kicks)
+      // still hit full, while sparse breakdowns keep the strict ramp so stray hits stay light.
+      // Over 30 songs: real kicks >= 0.8 strength 80% (absolute ramp: 76%), strays median 0.52 (0.46).
+      let hi = 0.75;
+      if (this.zs.length >= 30) hi = Math.min(0.75, Math.max(0.65, sorted[Math.floor(sorted.length / 2)]));
+      const lo = hi - 0.15;
+      strength = 0.12 + 0.88 * Math.max(0, Math.min(1, (m.z - lo) / (hi - lo)));
       soft = true;
-    } else strength = Math.min(1, m.z / p80);
+    } else {
+      const p80 = sorted[Math.floor(sorted.length * 0.8)] || m.z || 1;
+      strength = Math.min(1, m.z / p80);
+    }
     const c = this.clock;
     let beat = false, down = false;
     if (c && c.locked) {
