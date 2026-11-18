@@ -263,6 +263,9 @@ sketch/, test/, MORNING.html   original look sketch, stills and captures (contai
   then JPEGMAFIA - 1539 N. Calvert), measured sound offsets 385 / 340 ms. Full clip (88 MB) and web clip
   (21 MB) on the `demo-v1` release; `docs/showcase.jpg` then `docs/demo.webp` (6 s animated WebP loop) at the top of the README. Work files stay
   in `demo/` (git-ignored; the raw folders hold audio).
+- `tools/make_reel.py`: vertical 1080x1920 reel (whole wall on top with the mode toggle, a zoom on the hero
+  card, a taller KickNet strip). `demo/reel-inzo.mp4` + `demo/POSTS.md` (where to share and ready captions:
+  Instagram Reel / TikTok, r/desktops, r/creativecoding) were made 2026-11-19; the user posts them.
 - The songs are copyrighted and the pins are other artists' work: anything public is the user's call.
 
 ## Gotchas learned the hard way

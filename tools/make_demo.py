@@ -108,51 +108,54 @@ def font(size):
     return ImageFont.load_default()
 
 
-def strip_frames(n, start, env, env_rate, kicks, old, offset):
-    """Yield n strip frames (H_STRIP x W RGB bytes); frame i shows sound time start + i/FPS - offset."""
+def strip_frames(n, start, env, env_rate, kicks, old, offset, width=None, height=None, span=4.0, legend=True):
+    """Yield n strip frames (height x width RGB bytes); frame i shows sound time start + i/FPS - offset.
+    Drawn for 1920 x 120; other sizes scale every mark with the height (the vertical reel uses a taller strip)."""
     from PIL import Image, ImageDraw
-    f_lab, f_small = font(17), font(15)
-    span, play = 4.0, 0.72
-    kt = np.array([k["time"] for k in kicks]); kc = np.array([k["confidence"] for k in kicks])
+    Wd = width or W; Hd = height or H_STRIP
+    k = Hd / 120.0
+    S = lambda v: int(round(v * k))
+    f_lab, f_small, f_big = font(S(17)), font(S(15)), font(S(22))
+    play = 0.72
+    kt = np.array([k_["time"] for k_ in kicks]); kc = np.array([k_["confidence"] for k_ in kicks])
     phantom = np.array([len(kt) == 0 or np.min(np.abs(kt - o)) > 0.05 for o in old], bool)
-    PINK, GREY, RED, WAVE, TXT = (255, 63, 184), (205, 205, 215), (255, 86, 86), (66, 54, 92), (236, 232, 242)
-    WAVE = (104, 86, 150)
-    f_big = font(22)
+    PINK, RED, WAVE = (255, 63, 184), (255, 86, 86), (104, 86, 150)
     for i in range(n):
         ts = start + i / FPS - offset                      # sound time at the playhead
         a = ts - span * play; b = a + span
-        X = lambda tt: int((tt - a) / (b - a) * W)
-        im = Image.new("RGB", (W, H_STRIP), (10, 8, 16)); d = ImageDraw.Draw(im)
+        X = lambda tt: int((tt - a) / (b - a) * Wd)
+        im = Image.new("RGB", (Wd, Hd), (10, 8, 16)); d = ImageDraw.Draw(im)
         i0, i1 = max(0, int(a * env_rate)), min(len(env), int(b * env_rate))
         px = X(ts)
         for j in range(i0, i1, 2):
-            v = env[j] * 24; x = X(j / env_rate)
-            d.line([(x, 30 - v), (x, 30 + v)], fill=WAVE if x < px else (64, 54, 90))   # played part brighter
+            v = env[j] * S(24); x = X(j / env_rate)
+            d.line([(x, S(30) - v), (x, S(30) + v)], fill=WAVE if x < px else (64, 54, 90))   # played part brighter
         # how long ago the last kick crossed the playhead (drives the flash)
         past = kt[kt <= ts]
         since = ts - past[-1] if len(past) else 9.0
         glow = max(0.0, 1.0 - since / 0.18)
         if glow > 0:   # the playhead blooms on each kick
-            gw = int(6 + 20 * glow)
+            gw = S(6 + 20 * glow)
             col = tuple(int(10 + (c - 10) * glow * 0.45) for c in PINK)
-            d.rectangle([px - gw, 0, px + gw, H_STRIP], fill=col)
+            d.rectangle([px - gw, 0, px + gw, Hd], fill=col)
         m = (kt >= a) & (kt <= b)
         for t, c in zip(kt[m], kc[m]):
-            x = X(t); hh = int(14 + 30 * c); near = abs(t - ts) < 0.1
-            d.rectangle([x - 5, 78 - hh // 2, x + 5, 78 + hh // 2], fill=(255, 170, 225) if near else PINK)
-            d.rectangle([x - 2, 78 - hh // 2 + 3, x + 2, 78 + hh // 2 - 3], fill=(255, 215, 240))
+            x = X(t); hh = S(14 + 30 * c); near = abs(t - ts) < 0.1
+            d.rectangle([x - S(5), S(78) - hh // 2, x + S(5), S(78) + hh // 2], fill=(255, 170, 225) if near else PINK)
+            d.rectangle([x - S(2), S(78) - hh // 2 + S(3), x + S(2), S(78) + hh // 2 - S(3)], fill=(255, 215, 240))
         mo = (old >= a) & (old <= b)
         for t, ph in zip(old[mo], phantom[mo]):
-            x = X(t); d.rectangle([x - 2, 103, x + 2, 117], fill=RED if ph else (120, 120, 132))
-        d.line([(px, 0), (px, H_STRIP)], fill=(255, 255, 255), width=2)
+            x = X(t); d.rectangle([x - S(2), S(103), x + S(2), S(117)], fill=RED if ph else (120, 120, 132))
+        d.line([(px, 0), (px, Hd)], fill=(255, 255, 255), width=max(2, S(2)))
         # labels on a dark plate so the scrolling marks never run under them; a light flashes on each kick
-        d.rectangle([0, 52, 235, H_STRIP], fill=(10, 8, 16))
+        d.rectangle([0, S(52), S(235), Hd], fill=(10, 8, 16))
         lit = tuple(int(70 + (c - 70) * glow) for c in PINK) if glow > 0 else (70, 30, 60)
-        d.ellipse([18, 68, 38, 88], fill=lit)
-        d.text((48, 64), "KICKNET", font=f_big, fill=(255, 170, 225) if glow > 0.3 else PINK)
-        d.text((48, 100), "loudness trigger", font=f_small, fill=(130, 130, 142))
-        d.rectangle([W - 500, 2, W, 26], fill=(10, 8, 16))
-        d.text((W - 490, 4), "pink = kicks KickNet hears    red = old trigger firing on no kick", font=f_small, fill=(176, 170, 190))
+        d.ellipse([S(18), S(68), S(38), S(88)], fill=lit)
+        d.text((S(48), S(64)), "KICKNET", font=f_big, fill=(255, 170, 225) if glow > 0.3 else PINK)
+        d.text((S(48), S(100)), "loudness trigger", font=f_small, fill=(130, 130, 142))
+        if legend:
+            d.rectangle([Wd - S(500), S(2), Wd, S(26)], fill=(10, 8, 16))
+            d.text((Wd - S(490), S(4)), "pink = kicks KickNet hears    red = old trigger firing on no kick", font=f_small, fill=(176, 170, 190))
         yield im.tobytes()
 
 

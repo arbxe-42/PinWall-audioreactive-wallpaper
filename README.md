@@ -101,7 +101,7 @@ own code. See [`kicknet/README.md`](kicknet/README.md) or grab
 | `listener/` | the Python listener: loopback capture, KickNet, beat clock, drops, tray, websocket |
 | `kicknet/` | the standalone kick detector |
 | `bench/` | training and evaluation: stem labels, KickNet training, scoring against human taps |
-| `tools/` | image import, packaging, the Kick Check labelling page, demo recording and editing |
+| `tools/` | image import, packaging, the Kick Check labelling page, demo recording, editing and vertical reels |
 | `share/`, `setup.ps1` | what ships in `PinWall.zip`: the user guide, installer, uninstaller |
 
 Developer notes (architecture, every tuning decision and its numbers, gotchas) are in
