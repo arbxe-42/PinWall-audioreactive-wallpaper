@@ -279,7 +279,10 @@ sketch/, test/, MORNING.html   original look sketch, stills and captures (contai
    The packaged build (`dist/`, `tools/package.py`) must ship `kicknet.py` + `kicknet.npz`
    (weights are learned from the user's music: harmless numbers, but check before publishing).
 1. **Publishing:** a **private** GitHub repo exists since 2026-11-18 (the user asked, pins included):
-   https://github.com/andres-r-blanco/pin-wall (`git push` from `live-wallpaper/`, HTTPS via `gh`;
+   https://github.com/arbxe-42/pinwall-audioreactive-wallpaper (the user's PERSONAL account; transferred
+   from the work account andres-r-blanco on 2026-11-18, where it was `pin-wall`, then
+   `pinwall-audioreactive-wallpaper`). Pushing needs `gh` logged in as arbxe-42 (`gh auth login`, the
+   user's step). (`git push` from `live-wallpaper/`, HTTPS via `gh`;
    SSH has no key here). `.gitignore` keeps out the venv, caches, `test/` desktop captures, `dist/` and
    all audio. Making anything PUBLIC still needs the user's explicit yes, and a public copy must not
    contain their pins (`dist/PinWall.zip` is the code-only package).
