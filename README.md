@@ -118,4 +118,4 @@ Developer notes (architecture, every tuning decision and its numbers, gotchas) a
 
 ## License
 
-MIT for the code (see [`share/LICENSE`](share/LICENSE)). Images are not covered by the license.
+MIT for the code (see [`LICENSE`](LICENSE)). Images are not covered by the license.
