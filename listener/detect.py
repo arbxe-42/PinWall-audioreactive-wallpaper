@@ -66,7 +66,7 @@ class Detector:
             rise_db=1.0, snap_ratio=10.0,  # kick candidate checks (see _frame)
             fast_k=5.0, fast_rise=3.0, fast_gap=0.11, fast_hold=0.18, sub_margin=-99.0, sub_big=8.0, gate_db=30.0,   # fast kick trigger
             td_lo_db=6.0, td_hi_db=4.0, td_lo_big=12.0, td_floor_db=14.0,   # time-domain kick trigger
-            nn=1.0, nn_kick=0.5, nn_snare=2.0, nn_gap=0.09, nn_idle=1.5, nn_idle_thr=0.0, nn_peak=2,   # KickNet trigger (listener/kicknet.py, kicknet.npz); nn=0 = the older rules below
+            nn=1.0, nn_kick=0.5, nn_snare=2.0, nn_gap=0.09, nn_idle=1.5, nn_idle_thr=0.0, nn_peak=2, nn_bar=0.65,   # KickNet trigger (listener/kicknet.py, kicknet.npz); nn=0 = the older rules below
             learn_hit=0.4, learn_miss=0.4,
             lock_conf=0.6,       # fraction of recent beats backed by an onset
             bias=0.027,          # reported times minus this = the drum attack (bench-calibrated, 31 clips)
@@ -242,7 +242,11 @@ class Detector:
             if n >= hit["_send"]:
                 hit.pop("_send")
                 hit["emit"] = (n + 1) * self.hop / self.sr
-                out.append(hit)
+                # a hit whose confidence never climbs to nn_bar is dropped: bass notes and other extras stall
+                # around 0.6, real kicks keep climbing (the user: "picking up a lot of extra stuff, especially
+                # bass hits"). 0.65: extras 12.9 -> 6.7 per minute, 91% of hits on a kick, Dark Arm taps 96%.
+                if hit["z"] >= self.p["nn_bar"]:
+                    out.append(hit)
                 self.nn_pending = None
         if n - self.nn_last < self.p["nn_gap"] * FPS:
             return out

@@ -39,7 +39,8 @@ Every 10 ms, a 2048-point spectrum is folded into 40 log-spaced bands (40 Hz-14 
 20 ms. The last 12 frames (120 ms, 1440 numbers) go through a small MLP (1440 → 128 → 64 → 1) that answers
 "was there a kick attack 30 ms ago?". A kick fires when that confidence reaches 0.5 while still rising, at most
 once per 90 ms; it is reported 20 ms later with the peak confidence over those frames (real kicks keep
-climbing to ~0.82, stray hits stall around 0.66, so confidence separates them well). (An optional stricter first-hit-after-a-pause rule, `idle_threshold`, is off: it blocked the
+climbing to ~0.82, stray hits stall around 0.66, so confidence separates them well); kicks whose peak stays
+under 0.65 are dropped (`min_peak`: halves extras such as bass notes). (An optional stricter first-hit-after-a-pause rule, `idle_threshold`, is off: it blocked the
 first kicks of drops.)
 
 It was trained on full mixes, with answers taken from demucs-separated **drum stems** of the same songs, so

@@ -77,7 +77,7 @@ def env(x, sr, rate=200):
 def live_pick(A, lag=3):
     """The live trigger's picking rule (detect.py _nn_frame), on precomputed activations."""
     import detect
-    defaults = dict(nn_kick=0.5, nn_snare=0.5, nn_gap=0.09, nn_idle=1.5, nn_idle_thr=0.8)
+    defaults = dict(nn_kick=0.5, nn_snare=0.5, nn_gap=0.09, nn_idle=1.5, nn_idle_thr=0.8, nn_bar=0.0)
     src = open(detect.__file__, encoding="utf-8").read()
     import re
     for k in defaults:
@@ -92,7 +92,9 @@ def live_pick(A, lag=3):
         tk = max(defaults["nn_kick"], defaults["nn_idle_thr"]) if idle else defaults["nn_kick"]
         ts = max(defaults["nn_snare"], defaults["nn_idle_thr"]) if idle else defaults["nn_snare"]
         if (A[n, 0] >= tk and A[n, 0] >= A[n - 1, 0]) or (A[n, 1] >= ts and A[n, 1] >= A[n - 1, 1]):
-            out.append(n); last = n
+            last = n
+            if A[n:n + 3, 0].max() >= defaults["nn_bar"]:   # the live peak filter (2 frames after the trigger)
+                out.append(n)
     return (np.array(out) - lag + 1) / 100.0
 
 
