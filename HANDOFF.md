@@ -254,11 +254,13 @@ sketch/, test/, MORNING.html   original look sketch, stills and captures (contai
 - `tools/record_demo.py` (clean capture: Reactive mode, Win+D, desktop icons hidden, waits for music,
   ddagrab GPU capture of monitor 0 + soundcard loopback, restores everything) and `tools/make_demo.py`
   (KickNet + old trigger on the sound, sync by matching frame-to-frame motion to kicks, strip, libx264).
-  NVENC fails on this NVIDIA driver (needs 610+), so both encode with libx264. README "Demo video" has the
+  NVENC fails on this NVIDIA driver (needs 610+), so both encode with libx264. The clip keeps the icon
+  shelf (its Reactive/Ambient toggle shows the mode; the user wants it) with the desktop icons inside the
+  plates blurred, and cuts only the taskbar: 1920 x 1044 wall + 120 px strip = 1920 x 1164. README "Demo video" has the
   commands.
 - The published demo: the user's own recordings (INZO - Overthinker first, "looks cooler with purple",
   then JPEGMAFIA - 1539 N. Calvert), measured sound offsets 385 / 340 ms. Full clip (88 MB) and web clip
-  (21 MB) on the `demo-v1` release; `docs/demo.gif` (6 s loop) at the top of the README. Work files stay
+  (21 MB) on the `demo-v1` release; `docs/showcase.jpg` then `docs/demo.webp` (6 s animated WebP loop) at the top of the README. Work files stay
   in `demo/` (git-ignored; the raw folders hold audio).
 - The songs are copyrighted and the pins are other artists' work: anything public is the user's call.
 

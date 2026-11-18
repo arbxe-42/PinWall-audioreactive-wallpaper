@@ -10,7 +10,7 @@
 3. The wall (icon shelf band and taskbar cropped off) is scaled to 1920 x 960 and a 1920 x 120 strip is drawn
    under it: the sound's waveform scrolling past a playhead, KickNet's kicks (taller = more sure), and the
    old loudness trigger's hits (red where it fired on no kick).
-4. Writes the mp4 (H.264 + AAC) and, with --gif, an 8 s looping preview for the README.
+4. Writes the mp4 (H.264 + AAC) and, with --loop, a 6 s animated WebP loop for the README.
 """
 import argparse
 import json
@@ -23,8 +23,33 @@ import numpy as np
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 sys.path.append(os.path.join(ROOT, "listener"))   # after ROOT: listener/kicknet.py must not shadow the kicknet package
-W, H_WALL, H_STRIP, FPS = 1920, 960, 120, 30
-CROP = (0, 112, 2560, 1280)          # x, y, w, h on the 2560 x 1440 capture: below the icon shelf, above the taskbar
+W, H_WALL, H_STRIP, FPS = 1920, 1044, 120, 30
+CROP = (0, 112, 2560, 1280)          # the collage only (below the icon shelf, above the taskbar): used for sync
+# what the clip shows: everything but the taskbar. The icon shelf stays because its Reactive/Ambient toggle
+# (top right) shows the mode switching (the user: "the top is important"); the desktop icons inside the
+# shelf's plates are blurred (shelf.json plate boxes), the toggle stays sharp. --icons shows them as they are.
+SHOW = (0, 0, 2560, 1392)
+
+
+def icon_blur(icons_visible):
+    """ffmpeg filter (on the 2560 x 1440 capture) that blurs the inside of each icon plate."""
+    if icons_visible:
+        return "null"
+    sh = json.load(open(os.path.join(ROOT, "wallpaper", "shelf.json"), encoding="utf-8")).get("2560x1440", {})
+    y0, y1 = sh.get("plateY", [3, 100])
+    plates = sh.get("plates", [])
+    if not plates:
+        return "null"
+    n = len(plates)
+    f = f"split={n + 1}" + "".join(f"[s{i}]" for i in range(n + 1)) + ";"
+    for i, (x0, x1) in enumerate(plates):
+        ins = 8
+        f += f"[s{i + 1}]crop={x1 - x0 - 2 * ins}:{y1 - y0 - 2 * ins}:{x0 + ins}:{y0 + ins},boxblur=14:3[b{i}];"
+    cur = "s0"
+    for i, (x0, x1) in enumerate(plates):
+        f += f"[{cur}][b{i}]overlay={x0 + 8}:{y0 + 8}[o{i}];"
+        cur = f"o{i}"
+    return f[:-len(f"[o{n - 1}];")]   # the last overlay's output becomes the chain's output
 
 
 def kicks_and_old(mono, sr):
@@ -136,7 +161,8 @@ def main():
     ap.add_argument("--raw", default=os.path.join(ROOT, "demo", "raw"))
     ap.add_argument("--out", default=os.path.join(ROOT, "demo", "pinwall-demo.mp4"))
     ap.add_argument("--skip", type=float, default=0.6, help="seconds trimmed off the start")
-    ap.add_argument("--gif", action="store_true")
+    ap.add_argument("--gif", "--loop", dest="gif", action="store_true", help="also write a 6 s animated WebP loop")
+    ap.add_argument("--icons", action="store_true", help="show the desktop icons in the shelf (blurred by default)")
     a = ap.parse_args()
     import soundfile as sf
     audio, sr = sf.read(os.path.join(a.raw, "audio.wav"), dtype="float32", always_2d=True)
@@ -162,7 +188,8 @@ def main():
     a_in = ["-i", aligned]
     cmd = (["ffmpeg", "-v", "error", "-y", "-ss", f"{a.skip:.3f}", "-i", video,
             "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H_STRIP}", "-r", str(FPS), "-i", "-"] + a_in +
-           ["-filter_complex", f"[0:v]crop={w}:{h}:{x}:{y},scale={W}:{H_WALL}:flags=lanczos,fps={FPS}[wall];[wall][1:v]vstack[v];"
+           ["-filter_complex", f"[0:v]{icon_blur(a.icons)}[cl];[cl]crop={SHOW[2]}:{SHOW[3]}:{SHOW[0]}:{SHOW[1]},"
+            f"scale={W}:{H_WALL}:flags=lanczos,fps={FPS}[wall];[wall][1:v]vstack[v];"
             "[2:a]anull[a]",
             "-map", "[v]", "-map", "[a]", "-t", f"{dur:.3f}", "-c:v", "libx264", "-preset", "slow", "-crf", "18",
             "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", a.out])
@@ -173,11 +200,12 @@ def main():
     p.stdin.close(); p.wait()
     print("wrote", a.out)
     if a.gif:
-        gif = os.path.splitext(a.out)[0] + "-preview.gif"
-        # README preview: small enough for GitHub (aim < 8 MB): 6 s, 640 px, 12 fps, 96 colours
-        vf = "fps=12,scale=640:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=96:stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle"
-        subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", "2", "-t", "6", "-i", a.out, "-vf", vf, "-loop", "0", gif], check=True)
-        print("wrote", gif, f"({os.path.getsize(gif) // 1024} KB)")
+        # README loop: an animated WebP (full colour; a GIF's 256-colour palette looked muddy): 6 s, 1000 px,
+        # 15 fps, quality 75 (~8-9 MB; GitHub shows it like a GIF)
+        loop = os.path.splitext(a.out)[0] + "-loop.webp"
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", "4", "-t", "6", "-i", a.out, "-vf", "fps=15,scale=1000:-1:flags=lanczos",
+                        "-c:v", "libwebp_anim", "-q:v", "75", "-preset", "picture", "-compression_level", "5", "-loop", "0", "-an", loop], check=True)
+        print("wrote", loop, f"({os.path.getsize(loop) // 1024} KB)")
 
 
 if __name__ == "__main__":
