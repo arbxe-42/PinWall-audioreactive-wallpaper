@@ -13,7 +13,7 @@ export class Overlay {
     const { W, H, k, area, corner, titleCorner, acc, showClock, now, title } = s;
     const d = new Date(now);
     const hh = String(d.getHours()).padStart(2, '0'), mm = String(d.getMinutes()).padStart(2, '0');
-    const key = [W, H, corner, titleCorner, hh, mm, d.getSeconds(), s.bpm, s.empty, showClock, acc.map(hex).join(), title && title.text, title && (title.chips || []).length].join('|');
+    const key = [W, H, corner, titleCorner, hh, mm, d.getSeconds(), s.bpm, s.empty, showClock, acc.map(hex).join(), title && title.text, title && (title.chips || []).length, s.tape].join('|');
     if (key === this.key) return false;
     this.key = key;
     this.L.size(W, H);
@@ -25,6 +25,7 @@ export class Overlay {
 
     this.hud = null;
     this.np = null;
+    this.tape = null;
     if (showClock) {
       // the sketch's clock cluster: big time, a pink level meter, a white barcode, a long info bar
       const fs = 230 * k;
@@ -69,6 +70,20 @@ export class Overlay {
       this.hud = { meter: { x: px + 9 * k, y: capTop + 7 * k, w: pw - 18 * k, segH: sh, gap, segs },
         barcode: { x: bx, y: capTop, w: bw, h: bh }, squares: { x: bx, y: sqy, s: sq, step: sq + 3.3 * k },
         line: { x, y: dy + dh + 6 * k, w: right - x } };
+    }
+
+    if (s.tape) {
+      // kick tape (reactive mode only): a black strip with a pink edge in the bottom-left corner (or the first
+      // free corner if the clock or the now-playing block is there); the GL layer draws the sound and the kicks
+      const c = ['bl', 'br', 'tl', 'tr'].find(q => q !== corner && q !== titleCorner) || 'bl';
+      const tw = 560 * k, th = 66 * k, mx = 60 * k, my = 52 * k;
+      const tx = c[1] === 'l' ? area.x + mx : area.x + area.w - mx - tw;
+      const ty = c[0] === 't' ? area.y + my : area.y + area.h - my - th;
+      g.fillStyle = 'rgba(0,0,0,0.86)'; g.fillRect(tx, ty, tw, th);
+      g.fillStyle = '#ff2bd6'; g.fillRect(tx, ty, 6 * k, th);
+      g.font = `700 ${12 * k}px "Space Mono", Consolas, monospace`;
+      g.fillText('KICKNET', tx + 14 * k, ty + 15 * k);
+      this.tape = { x: tx + 6 * k, y: ty, w: tw - 6 * k, h: th, u: k };
     }
 
     // border: crop marks in the corners, registration marks on the edges, ruler ticks down the sides

@@ -168,6 +168,7 @@ class Detector:
         self.last_drop = -1e9
         self.silent_frames = 0
         self.levels = (0.0, 0.0, 0.0)
+        self.trace = []   # per frame (n, loudness 0-1, KickNet kick confidence): the wallpaper's kick tape
         self._lvmax = np.full(3, 1e-6)
 
     # ------------------------------------------------------------------ public
@@ -184,6 +185,10 @@ class Detector:
             if self.p.get("td_on"):
                 out.extend(self._td_kick(hopx))   # experimental waveform trigger (off: slower CPU, less accurate)
             out.extend(self._frame())
+            b, m, h = self.levels
+            self.trace.append((self.n - 1, min(1.0, 0.6 * b + 0.3 * m + 0.2 * h), self.nn_prev[0] if self.nn is not None else 0.0))
+            if len(self.trace) > 400:
+                del self.trace[:-400]
         self.pending = x[i:]
         return out
 

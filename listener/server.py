@@ -8,6 +8,7 @@
       hello  {mode, device, delay}
       clock  {next (epoch ms the next beat is HEARD), period (ms), locked, conf, bpm, pos, accent[4], down}
       levels {b, m, h}            ~60 per second, delayed to match what you hear
+      tape   {t, dt, lag, a, k}   ~30 per second in reactive mode: per-frame loudness + KickNet confidence
       drop   {at (epoch ms heard), jump}
       mode   {mode: "reactive" | "ambient"}
       silence {}
@@ -132,6 +133,7 @@ class Analyzer:
         self.last_clock = None
         self.last_clock_sent = 0.0
         self.level_q = []
+        self.tape, self.tape_sent = [], 0.0
 
     def feed(self, block, wall_end):
         """block: mono float32 just captured; wall_end: wall time its last sample was captured."""
@@ -169,6 +171,22 @@ class Analyzer:
                               "pos": int(d.beat_index % 4), "accent": [round(float(a), 2) for a in d.p_acc],
                               "down": down, "active": bool(d.active),
                               "pk": [round(float(a), 2) for a in d.p_kick]})
+        # kick tape for the clock (reactive mode only): every 10 ms frame's loudness and KickNet confidence,
+        # stamped in heard wall time like the hits, ~30 batches per second. KickNet answers for the sound
+        # `lag` frames back, so the wallpaper draws k[i] at t + (i - lag) * dt.
+        tr, d.trace = d.trace, []
+        if self.st.mode != "reactive":
+            self.tape = []
+        elif tr:
+            self.tape += tr
+            now = time.time()
+            if now - self.tape_sent >= 0.033:
+                self.tape_sent = now
+                at = self.offset + (self.tape[0][0] + 1) * d.hop / self.sr + heard
+                self.st.send({"type": "tape", "t": round(at * 1000, 1), "dt": round(1000 * d.hop / self.sr, 3),
+                              "lag": d.nn.net.lag if d.nn is not None else 0,
+                              "a": [round(f[1], 2) for f in self.tape], "k": [round(float(f[2]), 2) for f in self.tape]})
+                self.tape = []
         # levels, delayed so they match what you hear
         self.level_q.append((wall_end + heard, d.levels))
         now = time.time()

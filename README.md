@@ -22,6 +22,8 @@ plays**: Spotify, YouTube, games, anything. It runs inside
   and ignores vocals, bass notes and sidechain pumping.
 - **On time, even on Bluetooth.** Each hit is scheduled for the moment you *hear* it. Bluetooth
   speakers play ~250 ms late, and Pin Wall waits for them; a one-minute tap-along calibrates any device.
+- **Kick tape:** a small strip in the corner shows the last few seconds of sound and every kick KickNet
+  hears, scrolling into a playhead (Reactive mode only).
 - **Drops shatter the wall** into a fresh collage, and a picture swaps on every bar.
 - **Now playing:** the track title and album cover (from Windows' media controls), and the cover's
   colours pick which of your images come up.

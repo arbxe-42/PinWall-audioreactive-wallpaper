@@ -437,6 +437,41 @@ function markTex(kind) {
   return (markCache[kind] = stampTexture(c));
 }
 
+// Kick tape in the bottom-left corner (reactive mode only): the last 3.6 s of sound scrolling left into a white
+// playhead (now), 0.4 s of what's coming on the right (with Bluetooth delay the listener hears it first).
+// Violet = loudness, turning pink where KickNet thinks there's a kick; solid pink bars = the hits it sent,
+// taller when it was surer, flashing white as they cross the playhead.
+function drawKickTape(t, dt) {
+  S.tapeA = (S.tapeA || 0) + ((music.mode === 'reactive' && music.connected ? 1 : 0) - (S.tapeA || 0)) * (1 - Math.exp(-dt * 6));
+  const fade = S.tapeA;
+  if (fade < 0.01) return;
+  const PAST = 3600, FUT = 400, nowMs = Date.now(), u = t.u;
+  const pad = 8 * u, x0 = t.x + pad, w = t.w - 2 * pad, top = t.y + 22 * u, hh = t.h - 22 * u - 6 * u, mid = top + hh / 2;
+  const playX = x0 + w * PAST / (PAST + FUT);
+  const xOf = ms => x0 + (ms - (nowMs - PAST)) / (PAST + FUT) * w;
+  const colW = 4 * u, cols = Math.floor(w / colW), msPer = (PAST + FUT) / cols;
+  const A = new Float32Array(cols), K = new Float32Array(cols);
+  const t0 = nowMs - PAST;
+  for (const [ms, a] of music.tapeA) { const c = Math.floor((ms - t0) / msPer); if (c >= 0 && c < cols && a > A[c]) A[c] = a; }
+  for (const [ms, k] of music.tapeK) { const c = Math.floor((ms - t0) / msPer); if (c >= 0 && c < cols && k > K[c]) K[c] = k; }
+  for (let c = 0; c < cols; c++) {
+    if (A[c] <= 0.01) continue;
+    const v = Math.min(1, A[c]), kk = Math.max(0, Math.min(1, (K[c] - 0.3) / 0.5));
+    const rgb = [0.6 + 0.4 * kk, 0.45 - 0.28 * kk, 0.95 - 0.11 * kk];
+    const x = x0 + c * colW, future = x > playX;
+    const hgt = Math.max(2 * u, v * hh * 0.86);
+    drawRect(x, mid - hgt / 2, colW - 1.5 * u, hgt, rgb, (future ? 0.32 : 0.9) * fade);
+  }
+  for (const [at, z] of music.tapeHits) {
+    const x = xOf(at);
+    if (x < x0 || x > x0 + w) continue;
+    const since = nowMs - at, flash = since >= 0 && since < 140;
+    const hgt = hh * Math.min(1, 0.45 + 0.55 * Math.max(0, (z - 0.5) / 0.45));
+    drawRect(x - 2 * u, mid - hgt / 2, 4 * u, hgt, flash ? [1, 1, 1] : [1, 0.17, 0.84], (since < 0 ? 0.55 : 1) * fade);
+  }
+  drawRect(playX - 1 * u, t.y + 18 * u, 2 * u, t.h - 20 * u, [1, 1, 1], 0.95 * fade);
+}
+
 // solid rectangle in canvas px (top-left x, y)
 function drawRect(x, y, w, h, rgb, alpha = 1) {
   const u = P.card.u;
@@ -681,6 +716,7 @@ function frameBody() {
     W: S.W, H: S.H, k: kp * S.layout.k, area: { x: S.area.x * kp, y: S.area.y * kp, w: S.area.w * kp, h: S.area.h * kp },
     corner: clockCorner, titleCorner, acc: [acc.hot, acc.hot, [182, 255, 46], acc.deep], showClock: settings.clock, now: now(), title: S.title,
     bpm: music.clock && music.clock.locked ? music.clock.bpm : 0, empty: S.empty,
+    tape: music.mode === 'reactive' && music.connected,
   });
   if (changed) overLayer.upload();
 
@@ -795,6 +831,14 @@ function frameBody() {
     drawRect(h.line.x, h.line.y + 8 * kp, h.line.w * secs, 2 * kp, [1, 0.17, 0.84], 0.9);
     gl.disable(gl.BLEND);
   }
+
+  // ---- kick tape (reactive mode only) ----
+  if (overlay.tape) {
+    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.useProgram(P.card.p); gl.uniform2f(P.card.u.uRes, S.W, S.H);
+    drawKickTape(overlay.tape, dt);
+    gl.disable(gl.BLEND);
+  } else S.tapeA = 0;
 
   // ---- album cover above the now-playing block ----
   if (S.cover && overlay.np) {

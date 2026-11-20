@@ -263,6 +263,23 @@ sketch/, test/, MORNING.html   original look sketch, stills and captures (contai
   (old 20), none more than 5 times (old 9).
 - The hero now also swaps mid-wall: at bar 16 of every 32 during music, and every other ambient swap.
 
+## Kick tape (2026-11-20)
+
+The user liked the KickNet strip in the demo and asked for "something cool like that" on the wallpaper, "maybe
+not at the bottom", only in Reactive mode. Of the mocks (`demo/viz_options*.jpg`: tape under the clock, ring
+around the cover, border seismograph, barcode, info-bar spectrum, 16-step grid) they picked the tape under the
+clock, then said it "takes up too much center space, put in bottom left".
+
+- The listener sends `tape {t, dt, lag, a, k}` ~30 times a second, reactive mode only: per 10 ms frame the
+  loudness (`0.6 b + 0.3 m + 0.2 h` of the detector's levels) and KickNet's kick confidence, stamped in heard
+  wall time like the hits (`Detector.trace` collects them).
+- `audio.js` keeps the last 6 s (`tapeA`, `tapeK`, `tapeHits`); `overlay.js` draws the black strip with the
+  pink edge and the KICKNET tag in the bottom-left corner (the first free corner if the clock or now-playing
+  is there); `main.js` `drawKickTape` draws 3.6 s of past sound into a white playhead plus 0.4 s of what's
+  coming (Bluetooth delay lets the listener hear it first): violet loudness bars turning pink where KickNet
+  thinks there's a kick, solid pink bars for the hits (taller = surer) flashing white as they cross.
+- Ambient: the strip disappears and the listener stops sending.
+
 ## Demo video (2026-11-18)
 
 - `tools/record_demo.py` (clean capture: Reactive mode, Win+D, desktop icons hidden, waits for music,

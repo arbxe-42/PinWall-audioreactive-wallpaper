@@ -25,6 +25,9 @@ export class Music {
     this.zsOld = [];   // confidences of the last 40 hits (the "settled" strength, see _hit)
     this.liveMax = [1e-3, 1e-3, 1e-3];
     this.device = '';
+    // kick tape (the strip under the clock): per 10 ms frame [heard ms, loudness, KickNet confidence], and the
+    // hits [heard ms, confidence]; the last 6 s, reactive mode only (the listener sends none in ambient)
+    this.tapeA = []; this.tapeK = []; this.tapeHits = [];
     this._connect();
   }
 
@@ -43,12 +46,31 @@ export class Music {
       if (m.type === 'clock') this._clock(m);
       else if (m.type === 'levels') { this.target = { b: m.b, m: m.m, h: m.h }; this.lastLevelAt = Date.now(); }
       else if (m.type === 'drop') this._drop(m);
-      else if (m.type === 'hit') this._hit(m);
+      else if (m.type === 'hit') { this._tapeHit(m); this._hit(m); }
+      else if (m.type === 'tape') this._tape(m);
       else if (m.type === 'reload') setTimeout(() => location.reload(), 300);   // new images were imported
       else if (m.type === 'mode') { this.mode = m.mode; this.emit('mode', m.mode); }
       else if (m.type === 'hello') { this.mode = m.mode; this.device = m.device; this.emit('mode', m.mode); this.emit('device', m); }
       else if (m.type === 'silence') { this.clock = null; this.zs = []; this.zsOld = []; }
     };
+  }
+
+  _tape(m) {
+    for (let i = 0; i < m.a.length; i++) {
+      this.tapeA.push([m.t + i * m.dt, m.a[i]]);
+      this.tapeK.push([m.t + (i - m.lag) * m.dt, m.k[i]]);
+    }
+    const old = Date.now() - 6000;
+    for (const arr of [this.tapeA, this.tapeK]) {
+      let n = 0; while (n < arr.length && arr[n][0] < old) n++;
+      if (n) arr.splice(0, n);
+    }
+  }
+
+  _tapeHit(m) {
+    this.tapeHits.push([m.at, m.z]);
+    const old = Date.now() - 6000;
+    while (this.tapeHits.length && this.tapeHits[0][0] < old) this.tapeHits.shift();
   }
 
   setMode(mode) {
