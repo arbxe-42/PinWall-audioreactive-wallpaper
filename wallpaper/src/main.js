@@ -437,39 +437,43 @@ function markTex(kind) {
   return (markCache[kind] = stampTexture(c));
 }
 
-// Kick tape in the bottom-left corner (reactive mode only): the last 3.6 s of sound scrolling left into a white
-// playhead (now), 0.4 s of what's coming on the right (with Bluetooth delay the listener hears it first).
-// Violet = loudness, turning pink where KickNet thinks there's a kick; solid pink bars = the hits it sent,
-// taller when it was surer, flashing white as they cross the playhead.
+// Kick tape beside the now-playing block (reactive mode only): a thin see-through strip drawn into the wall,
+// so it sits behind the text and cover and never takes the eye. The white playhead (now) is near the top with
+// 0.4 s of what's coming above it (with Bluetooth delay the listener hears it first), and the last 3.6 s of
+// sound falls away below. Violet = loudness, turning pink where KickNet thinks there's a kick; pink bars = the
+// hits it sent, wider when it was surer, flashing white as they cross the playhead.
 function drawKickTape(t, dt) {
   S.tapeA = (S.tapeA || 0) + ((music.mode === 'reactive' && music.connected ? 1 : 0) - (S.tapeA || 0)) * (1 - Math.exp(-dt * 6));
-  const fade = S.tapeA;
+  const fade = S.tapeA * 0.92;   // a touch see-through: never the focus
   if (fade < 0.01) return;
   const PAST = 3600, FUT = 400, nowMs = Date.now(), u = t.u;
-  const pad = 8 * u, x0 = t.x + pad, w = t.w - 2 * pad, top = t.y + 22 * u, hh = t.h - 22 * u - 6 * u, mid = top + hh / 2;
-  const playX = x0 + w * PAST / (PAST + FUT);
-  const xOf = ms => x0 + (ms - (nowMs - PAST)) / (PAST + FUT) * w;
-  const colW = 4 * u, cols = Math.floor(w / colW), msPer = (PAST + FUT) / cols;
-  const A = new Float32Array(cols), K = new Float32Array(cols);
-  const t0 = nowMs - PAST;
-  for (const [ms, a] of music.tapeA) { const c = Math.floor((ms - t0) / msPer); if (c >= 0 && c < cols && a > A[c]) A[c] = a; }
-  for (const [ms, k] of music.tapeK) { const c = Math.floor((ms - t0) / msPer); if (c >= 0 && c < cols && k > K[c]) K[c] = k; }
-  for (let c = 0; c < cols; c++) {
-    if (A[c] <= 0.01) continue;
-    const v = Math.min(1, A[c]), kk = Math.max(0, Math.min(1, (K[c] - 0.3) / 0.5));
+  drawRect(t.x, t.y, t.w, t.h, [0, 0, 0], 0.62 * fade);
+  drawRect(t.x, t.y, t.w, 3 * u, [1, 0.17, 0.84], 0.9 * fade);
+  // along = time axis (down the strip), across = bar size
+  const pad = 7 * u, a0 = t.y + pad, len = t.h - 2 * pad, c0 = t.x + 4 * u, cw = t.w - 8 * u, mid = c0 + cw / 2;
+  const posOf = ms => a0 + (nowMs + FUT - ms) / (PAST + FUT) * len;   // newest at the top
+  const playY = posOf(nowMs);
+  const rowH = 3.5 * u, rows = Math.floor(len / rowH), msPer = (PAST + FUT) / rows;
+  const A = new Float32Array(rows), K = new Float32Array(rows);
+  const tTop = nowMs + FUT;
+  for (const [ms, a] of music.tapeA) { const r = Math.floor((tTop - ms) / msPer); if (r >= 0 && r < rows && a > A[r]) A[r] = a; }
+  for (const [ms, k] of music.tapeK) { const r = Math.floor((tTop - ms) / msPer); if (r >= 0 && r < rows && k > K[r]) K[r] = k; }
+  for (let r = 0; r < rows; r++) {
+    if (A[r] <= 0.01) continue;
+    const v = Math.min(1, A[r]), kk = Math.max(0, Math.min(1, (K[r] - 0.3) / 0.5));
     const rgb = [0.6 + 0.4 * kk, 0.45 - 0.28 * kk, 0.95 - 0.11 * kk];
-    const x = x0 + c * colW, future = x > playX;
-    const hgt = Math.max(2 * u, v * hh * 0.86);
-    drawRect(x, mid - hgt / 2, colW - 1.5 * u, hgt, rgb, (future ? 0.32 : 0.9) * fade);
+    const y = a0 + r * rowH, future = y + rowH < playY;
+    const wd = Math.max(2 * u, v * cw);
+    drawRect(mid - wd / 2, y, wd, rowH - 1.3 * u, rgb, (future ? 0.35 : 0.85) * fade);
   }
   for (const [at, z] of music.tapeHits) {
-    const x = xOf(at);
-    if (x < x0 || x > x0 + w) continue;
+    const y = posOf(at);
+    if (y < a0 || y > a0 + len) continue;
     const since = nowMs - at, flash = since >= 0 && since < 140;
-    const hgt = hh * Math.min(1, 0.45 + 0.55 * Math.max(0, (z - 0.5) / 0.45));
-    drawRect(x - 2 * u, mid - hgt / 2, 4 * u, hgt, flash ? [1, 1, 1] : [1, 0.17, 0.84], (since < 0 ? 0.55 : 1) * fade);
+    const wd = t.w * Math.min(1, 0.5 + 0.5 * Math.max(0, (z - 0.5) / 0.45));
+    drawRect(t.x + (t.w - wd) / 2, y - 1.5 * u, wd, 3 * u, flash ? [1, 1, 1] : [1, 0.17, 0.84], (since < 0 ? 0.5 : 1) * fade);
   }
-  drawRect(playX - 1 * u, t.y + 18 * u, 2 * u, t.h - 20 * u, [1, 1, 1], 0.95 * fade);
+  drawRect(t.x - 2 * u, playY - 1 * u, t.w + 4 * u, 2 * u, [1, 1, 1], fade);
 }
 
 // solid rectangle in canvas px (top-left x, y)
@@ -708,6 +712,8 @@ function frameBody() {
     drawSprite(tex, (mk.x - par.x * mk.depth) * kp, (mk.y - par.y * mk.depth) * kp, mk.size * kp * tw, mk.rot + spin,
       0.85 + 0.15 * Math.sin(S.time * 2 + mk.phase));
   }
+  // kick tape (reactive mode only): part of the wall, under the text, the cover and the effects
+  if (overlay.tape) drawKickTape(overlay.tape, dt); else S.tapeA = 0;
   gl.disable(gl.BLEND);
 
   // ---- overlay text ----
@@ -716,7 +722,7 @@ function frameBody() {
     W: S.W, H: S.H, k: kp * S.layout.k, area: { x: S.area.x * kp, y: S.area.y * kp, w: S.area.w * kp, h: S.area.h * kp },
     corner: clockCorner, titleCorner, acc: [acc.hot, acc.hot, [182, 255, 46], acc.deep], showClock: settings.clock, now: now(), title: S.title,
     bpm: music.clock && music.clock.locked ? music.clock.bpm : 0, empty: S.empty,
-    tape: music.mode === 'reactive' && music.connected,
+    tape: music.mode === 'reactive' && music.connected, cover: !!S.cover,
   });
   if (changed) overLayer.upload();
 
@@ -831,14 +837,6 @@ function frameBody() {
     drawRect(h.line.x, h.line.y + 8 * kp, h.line.w * secs, 2 * kp, [1, 0.17, 0.84], 0.9);
     gl.disable(gl.BLEND);
   }
-
-  // ---- kick tape (reactive mode only) ----
-  if (overlay.tape) {
-    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-    gl.useProgram(P.card.p); gl.uniform2f(P.card.u.uRes, S.W, S.H);
-    drawKickTape(overlay.tape, dt);
-    gl.disable(gl.BLEND);
-  } else S.tapeA = 0;
 
   // ---- album cover above the now-playing block ----
   if (S.cover && overlay.np) {

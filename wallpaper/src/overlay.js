@@ -13,7 +13,7 @@ export class Overlay {
     const { W, H, k, area, corner, titleCorner, acc, showClock, now, title } = s;
     const d = new Date(now);
     const hh = String(d.getHours()).padStart(2, '0'), mm = String(d.getMinutes()).padStart(2, '0');
-    const key = [W, H, corner, titleCorner, hh, mm, d.getSeconds(), s.bpm, s.empty, showClock, acc.map(hex).join(), title && title.text, title && (title.chips || []).length, s.tape].join('|');
+    const key = [W, H, corner, titleCorner, hh, mm, d.getSeconds(), s.bpm, s.empty, showClock, acc.map(hex).join(), title && title.text, title && (title.chips || []).length, s.tape, s.cover].join('|');
     if (key === this.key) return false;
     this.key = key;
     this.L.size(W, H);
@@ -72,20 +72,6 @@ export class Overlay {
         line: { x, y: dy + dh + 6 * k, w: right - x } };
     }
 
-    if (s.tape) {
-      // kick tape (reactive mode only): a black strip with a pink edge in the bottom-left corner (or the first
-      // free corner if the clock or the now-playing block is there); the GL layer draws the sound and the kicks
-      const c = ['bl', 'br', 'tl', 'tr'].find(q => q !== corner && q !== titleCorner) || 'bl';
-      const tw = 560 * k, th = 66 * k, mx = 60 * k, my = 52 * k;
-      const tx = c[1] === 'l' ? area.x + mx : area.x + area.w - mx - tw;
-      const ty = c[0] === 't' ? area.y + my : area.y + area.h - my - th;
-      g.fillStyle = 'rgba(0,0,0,0.86)'; g.fillRect(tx, ty, tw, th);
-      g.fillStyle = '#ff2bd6'; g.fillRect(tx, ty, 6 * k, th);
-      g.font = `700 ${12 * k}px "Space Mono", Consolas, monospace`;
-      g.fillText('KICKNET', tx + 14 * k, ty + 15 * k);
-      this.tape = { x: tx + 6 * k, y: ty, w: tw - 6 * k, h: th, u: k };
-    }
-
     // border: crop marks in the corners, registration marks on the edges, ruler ticks down the sides
     {
       const L = area.x + 14 * k, R = area.x + area.w - 14 * k, T = area.y + 14 * k, B = area.y + area.h - 10 * k;
@@ -137,8 +123,13 @@ export class Overlay {
       const lh = fs * 0.92;
       const blockH = 34 * k + 12 * k + lines.length * lh + 18 * k + 40 * k + 14 * k + 22 * k;
       let y = tt ? area.y + m : area.y + area.h - m * 0.7 - blockH;
-      const rx = area.x + area.w - m;           // right edge (left edge if tl)
-      const lx = area.x + m;
+      // kick tape (reactive mode only): a slim strip in the margin on the outer side of the now-playing block.
+      // The GL layer draws it into the wall itself, behind this text; the block moves in a little (18 units) to
+      // give it room. Its ends line up with the section: the top with the album cover's top edge (the NOW
+      // PLAYING tag when there's no cover), the bottom with the colour chips (or the artist strip).
+      const NUDGE = s.tape ? 18 * k : 0, TW = 28 * k, TG = 6 * k;
+      const rx = area.x + area.w - m - NUDGE;  // right edge (left edge if tl)
+      const lx = area.x + m + NUDGE;
       const place = w => tl ? lx : rx - w;
       this.np = { right: tl ? lx : rx, top: y, left: tl };
       // tag
@@ -169,6 +160,11 @@ export class Overlay {
       y += 40 * k + 14 * k;
       const cw = chips.length * 52 * k;
       chipsRow(g, chips, place(cw), y, k);
+      if (s.tape) {
+        const top = s.cover ? this.np.top - 26 * k - 250 * k : this.np.top;
+        const bot = chips.length ? y + 22 * k : y - 14 * k;
+        this.tape = { x: tl ? lx - TG - TW : rx + TG, y: top, w: TW, h: bot - top, u: k };
+      }
     }
     return true;
   }
