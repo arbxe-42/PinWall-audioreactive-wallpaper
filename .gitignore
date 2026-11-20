@@ -7,6 +7,7 @@ listener/.venv/
 listener/listener.log
 listener/replay_test.log
 listener/state.json
+listener/quit.flag
 *.log
 
 # build output (rebuild: listener/.venv/Scripts/python.exe tools/package.py)

@@ -220,9 +220,22 @@ sketch/, test/, MORNING.html   original look sketch, stills and captures (contai
   & 'C:\Program Files\WindowsApps\12030rocksdanister.LivelyWallpaper_20262.5.6.0_x64__97hta09mmv6hy\Build\Lively.exe' setwp --file 'C:\Users\arbxe\AppData\Local\Lively Wallpaper\Library\wallpapers\pinwall' --monitor 2
   ```
   Then the same with `--monitor 1`.
-- **Restart the listener:** kill the python processes whose command line contains
-  `listener\server.py`, then start `listener\.venv\Scripts\pythonw.exe listener\server.py` from
-  `listener\`. Only one instance runs (mutex), except in `--replay` mode.
+- **The listener runs under a keeper (since 2026-11-20).** The Startup shortcut "Pin Wall listener" starts
+  `listener\keeper.py`, which runs `server.py` and restarts it 3 s after it exits for any reason except the
+  tray's Quit (which writes `listener\quit.flag`; the keeper then stops too). Why: the listener died
+  silently the night of 2026-11-18 (around a power-source change), and since the laptop only sleeps and
+  wakes (Modern Standby, no sign-in) nothing restarted it, so the wall stopped reacting.
+  - **To restart the listener:** just kill the `server.py` processes; the keeper brings it back.
+  - **To stop everything:** kill `keeper.py` first, then `server.py`.
+  - **To start it from scratch the way Windows does:** run the Startup shortcut through explorer, e.g.
+    `Start-Process explorer.exe -ArgumentList '"<Startup>\Pin Wall listener.lnk"'`. Don't start it from a
+    Claude shell: processes started from a session die when the session ends.
+  - Only one keeper and one listener run (mutexes); a second listener exits with code 3, and the keeper
+    then waits instead of spinning.
+  - Uncaught errors in any thread are logged ("FATAL" / "thread error in"); if the tray icon fails, the
+    listener logs it and keeps listening without the tray.
+  - Every fresh start comes up **Reactive**; Ambient lasts until the next restart. It used to be remembered
+    forever, which also left the wall ignoring the music after the user had switched to Ambient.
 - **See what's happening live:** `listener/listener.log`. Every 10 s each wallpaper logs `w, h, fps,
   paused, beats, hits, clock{locked, active, bpm, ahead}, err`. This is how to debug "it stopped
   reacting".

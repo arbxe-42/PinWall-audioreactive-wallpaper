@@ -98,10 +98,14 @@ if ($NoLively) {
 # ---------------------------------------------------------------- 5. start with Windows
 Say '[5/6] Starting the listener...'
 if (-not $NoListener) {
-  Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*listener\server.py*' -and $_.Name -like 'python*' } |
-    ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+  # the keeper first (it would restart the listener), then the listener
+  foreach ($pat in '*listener\keeper.py*', '*listener\server.py*') {
+    Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like $pat -and $_.Name -like 'python*' } |
+      ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+  }
 }
-$server = Join-Path $root 'listener\server.py'
+# keeper.py runs the listener and restarts it if it ever exits (except when you pick Quit in the tray)
+$server = Join-Path $root 'listener\keeper.py'
 if (-not $NoStartup -and (Ask '      Start Pin Wall with Windows?' 'y')) {
   $ws = New-Object -ComObject WScript.Shell
   $lnk = $ws.CreateShortcut((Join-Path ([Environment]::GetFolderPath('Startup')) 'Pin Wall listener.lnk'))

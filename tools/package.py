@@ -19,6 +19,7 @@ FILES = [
     ("wallpaper/index.html", "wallpaper/index.html"), ("wallpaper/LivelyInfo.json", "wallpaper/LivelyInfo.json"),
     ("wallpaper/LivelyProperties.json", "wallpaper/LivelyProperties.json"), ("share/shelf.json", "wallpaper/shelf.json"),
     ("listener/server.py", "listener/server.py"), ("listener/detect.py", "listener/detect.py"),
+    ("listener/keeper.py", "listener/keeper.py"),
     ("listener/kicknet.py", "listener/kicknet.py"), ("listener/kicknet.npz", "listener/kicknet.npz"),
     ("listener/requirements.txt", "listener/requirements.txt"), ("listener/calibrate.html", "listener/calibrate.html"),
     ("share/devices.json", "listener/devices.json"), ("tools/prep_pins.py", "tools/prep_pins.py"),

@@ -19,11 +19,11 @@ never publish the wallpaper or its screenshots.
 | Piece | Where | What it does |
 |---|---|---|
 | Wallpaper | `wallpaper/` (linked into Lively's library as **Pin Wall**) | WebGL2 collage. Lively plays it on both screens, each at its own size |
-| Listener | `listener/server.py`, starts with Windows (Startup folder shortcut "Pin Wall listener") | Hears what the PC plays, finds the beat, tells the wallpaper. Tray icon (a starburst), log in `listener/listener.log`. Audio is analysed in memory only, never saved |
+| Listener | `listener/server.py`, kept running by `listener/keeper.py`, which starts with Windows (Startup folder shortcut "Pin Wall listener") and restarts the listener if it ever stops | Hears what the PC plays, finds the beat, tells the wallpaper. Tray icon (a starburst), log in `listener/listener.log`. Audio is analysed in memory only, never saved |
 
 ## Controls
 
-- **Ctrl+Alt+W**: switch **Reactive** (music-driven) / **Ambient** (calm background: slow drift, one picture melts into another about once a minute, a new wall every few minutes, no hits). Remembered across restarts.
+- **Ctrl+Alt+W**: switch **Reactive** (music-driven) / **Ambient** (calm background: slow drift, one picture melts into another about once a minute, a new wall every few minutes, no hits). Every fresh start comes up Reactive.
 - **Tray icon**: left-click toggles the mode; right-click shows the mode and the output device, and has Quit.
 - **Mouse** (on the bare desktop): pictures sit at different depths and slide with the cursor; the picture under the cursor lifts with a holo-foil sheen; a click slams a starburst with a shockwave; dragging across a picture rips it to reveal another. The icon shelf at the top never reacts to clicks.
 - **Lively's panel** (Pin Wall → customise): mode, reaction intensity, clock on/off, battery mode, icon-shelf outlines (calibration).

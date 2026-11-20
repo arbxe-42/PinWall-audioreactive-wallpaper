@@ -66,7 +66,7 @@ Tips:
 **Reactive** mode: pictures hit on the kicks, the sunburst steps round, a picture swaps every bar,
 heavier tears every 8 bars, and the wall shatters on big drops.
 **Ambient** mode: everything still floats, drifts and slowly swaps pictures, but nothing follows the
-music. The choice is remembered.
+music. Every fresh start (sign-in) comes up Reactive.
 
 ## Speaker delay (Bluetooth)
 
@@ -115,7 +115,7 @@ take a screenshot to measure where your icons are.
 
 - **Nothing moves with the music.**
   - Is the tray icon there? If not, start *Pin Wall listener* from the Start menu's Startup folder, or
-    run `Setup.bat` again.
+    run `Setup.bat` again. While it runs, a small keeper restarts the listener by itself if it ever stops.
   - Is the button set to REACTIVE?
   - Look in `listener\listener.log`: it should say `capturing <your speakers>` and `lock bpm …` while
     music plays.

@@ -41,6 +41,7 @@ BLOCK = 480  # 10 ms
 STATE = os.path.join(HERE, "state.json")
 DEVICES = os.path.join(HERE, "devices.json")
 LOG = os.path.join(HERE, "listener.log")
+QUIT_FLAG = os.path.join(HERE, "quit.flag")   # written on tray Quit; keeper.py then stops too
 
 
 def log(*a):
@@ -60,10 +61,13 @@ def log(*a):
 # ---------------------------------------------------------------- state
 class State:
     def __init__(self):
+        # every fresh start (sign-in, or the keeper restarting the listener) comes up Reactive: an Ambient
+        # choice lasts until then. It used to be remembered forever, which left the wall ignoring the music
+        # after a restart without the user noticing why.
         self.mode = "reactive"
         try:
-            self.mode = json.load(open(STATE, encoding="utf-8")).get("mode", "reactive")
-        except Exception:
+            json.dump({"mode": self.mode}, open(STATE, "w", encoding="utf-8"))
+        except OSError:
             pass
         self.device = "?"
         self.delay = 0.0
@@ -376,6 +380,12 @@ def run_tray(st: State, stop: threading.Event):
         refresh()
 
     def quit_(_icon, _item):
+        # tell the keeper this was the user's choice, so it doesn't start the listener again
+        try:
+            open(QUIT_FLAG, "w").close()
+        except OSError:
+            pass
+        log("quit from the tray")
         stop.set()
         icon.stop()
 
@@ -429,11 +439,20 @@ def main():
     a = ap.parse_args()
     PORT = a.port
 
-    # one instance only
+    # one instance only (exit code 3 tells keeper.py a listener is already running)
     mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "PinWallListener")
     if ctypes.windll.kernel32.GetLastError() == 183 and not a.replay:
         log("already running")
-        return
+        sys.exit(3)
+    # any uncaught error, in any thread, goes to the log (the listener once died silently)
+    import traceback
+
+    def _one_line(et, ev, tb):
+        return " | ".join("".join(traceback.format_exception(et, ev, tb)).strip().splitlines())
+
+    sys.excepthook = lambda et, ev, tb: log("FATAL", _one_line(et, ev, tb))
+    threading.excepthook = lambda h: log("thread error in", h.thread.name if h.thread else "?",
+                                         _one_line(h.exc_type, h.exc_value, h.exc_traceback))
     st = State()
     stop = threading.Event()
     if a.replay:
@@ -450,8 +469,16 @@ def main():
         except KeyboardInterrupt:
             stop.set()
     else:
-        run_tray(st, stop)
+        # the tray runs on the main thread; if it ever fails (it can after power or display changes), keep
+        # listening without it instead of letting the whole listener exit
+        try:
+            run_tray(st, stop)
+        except Exception as ex:
+            log("tray failed, listening on without it:", repr(ex))
+            while not stop.is_set():
+                time.sleep(0.5)
     stop.set()
+    log("listener stopped")
     del mutex
 
 
